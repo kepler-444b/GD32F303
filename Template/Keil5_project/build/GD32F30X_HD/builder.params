@@ -3,7 +3,7 @@
     "target": "GD32F30X_HD",
     "toolchain": "AC6",
     "toolchainLocation": "D:\\keil\\keil_v5\\ARM\\ARMCLANG",
-    "toolchainCfgFile": "c:\\Users\\sds\\.vscode\\extensions\\cl.eide-3.26.1\\res\\data\\models/arm.v6.model.json",
+    "toolchainCfgFile": "c:\\Users\\kepler\\.vscode\\extensions\\cl.eide-3.26.1\\res\\data\\models/arm.v6.model.json",
     "buildMode": "fast|multhread",
     "showRepathOnLog": true,
     "threadNum": 16,
@@ -162,10 +162,10 @@
         "SYS_PathSep": ";",
         "SYS_PathSeparator": ";",
         "SYS_EOL": "\r\n",
-        "EIDE_BUILDER_DIR": "c:\\Users\\sds\\.vscode\\extensions\\cl.eide-3.26.1\\res\\tools\\win32\\unify_builder",
+        "EIDE_BUILDER_DIR": "c:\\Users\\kepler\\.vscode\\extensions\\cl.eide-3.26.1\\res\\tools\\win32\\unify_builder",
         "EIDE_BINARIES_VER": "12.1.1",
-        "EIDE_MSYS": "C:\\Users\\sds\\.eide\\bin\\builder\\msys\\bin",
-        "EIDE_PY3_CMD": "C:\\Users\\sds\\.eide\\bin\\python36\\python3.exe",
+        "EIDE_MSYS": "C:\\Users\\kepler\\.eide\\bin\\builder\\msys\\bin",
+        "EIDE_PY3_CMD": "C:\\Users\\kepler\\.eide\\bin\\python36\\python3.exe",
         "ToolchainRoot": "D:\\keil\\keil_v5\\ARM\\ARMCLANG"
     },
     "sysPaths": []

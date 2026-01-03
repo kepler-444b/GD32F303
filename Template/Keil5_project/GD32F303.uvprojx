@@ -692,16 +692,6 @@
               <FilePath>..\..\Source\app\app_timer\app_timer.h</FilePath>
             </File>
             <File>
-              <FileName>app_panel_protocol.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\Source\app\app_panel_protocol\app_panel_protocol.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_panel_protocol.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\Source\app\app_panel_protocol\app_panel_protocol.h</FilePath>
-            </File>
-            <File>
               <FileName>app_eventbus.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Source\app\app_evenbus\app_eventbus.c</FilePath>
@@ -710,16 +700,6 @@
               <FileName>app_eventbus.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\Source\app\app_evenbus\app_eventbus.h</FilePath>
-            </File>
-            <File>
-              <FileName>app_panel_config.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\Source\app\app_panel_config\app_panel_config.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_panel_config.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\Source\app\app_panel_config\app_panel_config.h</FilePath>
             </File>
             <File>
               <FileName>app_protocol.c</FileName>
@@ -740,6 +720,36 @@
               <FileName>app_mqtt_model.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\Source\app\app_mqtt_model\app_mqtt_model.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_public_protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_public_protocol\app_public_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_public_protocol.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_public_protocol\app_public_protocol.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_public_config.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_public_config\app_public_config.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_public_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_public_config\app_public_config.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_base.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_base\app_base.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_base.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_base\app_base.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -775,6 +785,16 @@
               <FileName>bsp_pcb.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\Source\bsp\bsp_pcb\bsp_pcb.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\bsp\bsp_flash\bsp_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_flash.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\bsp\bsp_flash\bsp_flash.h</FilePath>
             </File>
           </Files>
         </Group>

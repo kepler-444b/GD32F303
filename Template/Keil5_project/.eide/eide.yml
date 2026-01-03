@@ -74,14 +74,14 @@ virtualFolder:
         - path: ../../Source/app/app_evenbus/app_eventbus.h
         - path: ../../Source/app/app_protocol/app_protocol.c
         - path: ../../Source/app/app_protocol/app_protocol.h
-        - path: ../../Source/app/app_base/app_base.c
-        - path: ../../Source/app/app_base/app_base.h
         - path: ../../Source/app/app_mqtt_model/app_mqtt_model.c
         - path: ../../Source/app/app_mqtt_model/app_mqtt_model.h
         - path: ../../Source/app/app_public_protocol/app_public_protocol.c
         - path: ../../Source/app/app_public_protocol/app_public_protocol.h
         - path: ../../Source/app/app_public_config/app_public_config.c
         - path: ../../Source/app/app_public_config/app_public_config.h
+        - path: ../../Source/app/app_base/app_base.c
+        - path: ../../Source/app/app_base/app_base.h
       folders: []
     - name: Bsp
       files:
@@ -140,15 +140,15 @@ virtualFolder:
         - path: ../../Source/cjson/cJSON.c
         - path: ../../Source/cjson/cJSON.h
       folders: []
-    - name: ::CMSIS
-      files: []
-      folders: []
-    - name: Dev
+    - name: Dve
       files:
         - path: ../../Source/dev/dev_manager.c
         - path: ../../Source/dev/dev_manager.h
         - path: ../../Source/dev/dev_public_host.c
         - path: ../../Source/dev/dev_public_host.h
+      folders: []
+    - name: ::CMSIS
+      files: []
       folders: []
 dependenceList: []
 outDir: build
@@ -420,8 +420,8 @@ targets:
         baseAddr: ""
         bin: ""
         cpuInfo:
-          cpuName: GD32F303VCT6
-          vendor: GigaDevice
+          cpuName: "null"
+          vendor: "null"
         otherCmds: ""
         proType: 1
         speed: 8000

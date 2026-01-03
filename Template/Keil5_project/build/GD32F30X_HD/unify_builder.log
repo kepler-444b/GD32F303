@@ -3662,3 +3662,25 @@ These source files will be recompiled
 [2025-12-31 17:54:13]	[done]
 	build successfully !
 
+[2026-01-03 10:56:22]	[info] incremental build: 1 source files changed
+These source files will be recompiled
+---
+'d:\code\GD32F303\Source\app\app_public_protocol\app_public_protocol.c': source file has been changed.
+
+[2026-01-03 10:56:25]	[done]
+	build successfully !
+
+[2026-01-03 16:18:13]	[info] incremental build: 1 source files changed
+These source files will be recompiled
+---
+'d:\code\GD32F303\Source\app\app_public_protocol\app_public_protocol.c': source file has been changed.
+
+[2026-01-03 16:18:14]	[done]
+	build successfully !
+
+[2026-01-03 16:18:18]	[done]
+	build successfully !
+
+[2026-01-03 16:25:39]	[done]
+	build successfully !
+

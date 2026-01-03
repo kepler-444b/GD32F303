@@ -2,7 +2,7 @@
   ..\..\Source\app\app_evenbus\app_eventbus.h \
   ..\..\Source\app\app_protocol\app_protocol.h \
   ..\..\Source\app\app_timer\app_timer.h \
-  ..\..\Source\app\app_w5500\app_w5500.h \
+  ..\..\Source\app\app_mqtt_model\app_mqtt_model.h \
   ..\..\Utilities\..\Source\w5500\ioLibrary_Driver\Internet\MQTT\MQTTClient.h \
   ..\..\Utilities\..\Source\w5500\ioLibrary_Driver\Internet\MQTT\.\MQTTPacket\src\MQTTPacket.h \
   ..\..\Utilities\..\Source\w5500\ioLibrary_Driver\Internet\MQTT\.\MQTTPacket\src\MQTTConnect.h \
@@ -12,7 +12,7 @@
   ..\..\Utilities\..\Source\w5500\ioLibrary_Driver\Internet\MQTT\.\MQTTPacket\src\MQTTFormat.h \
   ..\..\Utilities\..\Source\w5500\ioLibrary_Driver\Internet\MQTT\.\MQTTPacket\src\StackTrace.h \
   ..\..\Utilities\..\Source\w5500\ioLibrary_Driver\Internet\MQTT\mqtt_interface.h \
-  ..\..\Source\dev\dev_manager.h \
+  ..\..\Utilities\..\Source\cjson\cJSON.h ..\..\Source\dev\dev_manager.h \
   ..\..\Source\w5500\ioLibrary_Driver\Ethernet\wizchip_conf.h \
   ..\..\Source\w5500\ioLibrary_Driver\Ethernet\W5500\w5500.h \
   ..\..\Source\w5500\ioLibrary_Driver\Ethernet\W5500\..\wizchip_conf.h \
