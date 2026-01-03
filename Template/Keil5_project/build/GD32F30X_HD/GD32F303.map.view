@@ -1,0 +1,6 @@
+tool: AC6
+fileName: 'GD32F303.map'
+elfName: 'GD32F303.axf'
+compilerName: 'ARMCLANG 6'
+compilerFullName: 'ARMCLANG 6'
+compilerPath: 'D:\keil\keil_v5\ARM\ARMCLANG\bin\armclang.exe'

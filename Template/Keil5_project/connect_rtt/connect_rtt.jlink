@@ -1,0 +1,4 @@
+device GD32F303VCT6
+if SWD
+speed 8000
+connect
