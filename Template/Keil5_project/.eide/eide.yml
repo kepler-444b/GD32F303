@@ -420,8 +420,8 @@ targets:
         baseAddr: ""
         bin: ""
         cpuInfo:
-          cpuName: "null"
-          vendor: "null"
+          cpuName: GD32F303VC
+          vendor: GigaDevice
         otherCmds: ""
         proType: 1
         speed: 8000
