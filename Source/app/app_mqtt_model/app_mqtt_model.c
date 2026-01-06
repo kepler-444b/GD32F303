@@ -4,10 +4,13 @@
 #include "../Source/app/app_base/app_base.h"
 #include "../Source/app/app_timer/app_timer.h"
 #include "../Source/bsp/bsp_usart/bsp_usart.h"
-#include "../Source/w5500/ioLibrary_Driver/Ethernet/wizchip_conf.h"
+
 #include "../Source/w5500/ioLibrary_Driver/Internet/DNS/do_dns.h"
+#include "../Source/w5500/ioLibrary_Driver/Internet/DNS/dns.h"
 #include "../Source/w5500/wiz_interface/wiz_interface.h"
 #include "../Source/w5500/wiz_platform/wiz_platform.h"
+
+#include "../Source/app/app_http_model/app_http_model.h"
 
 #define MQTT_ETHERNET_MAX_SIZE (1024 * 2)
 
@@ -50,31 +53,45 @@ MQTTMessage pubmessage = {
     .id       = 0,
 };
 
-static uint8_t mqtt_recv_flag   = 0;
 MQTTPacket_willOptions willdata = MQTTPacket_willOptions_initializer; /* Will subject struct initialization */
 MQTTPacket_connectData data     = MQTTPacket_connectData_initializer; /*Define the parameters of the MQTT connection*/
 unsigned char *data_ptr         = NULL;
 
-#define SOCKET_ID             0
-#define ETHERNET_BUF_MAX_SIZE (1024 * 2)
+#define MQTT_SOCKET_ID             0
+#define HTTP_SOCKET_ID             1
+
+#define MQTT_ETHERNET_BUF_MAX_SIZE 1024
+#define HTTP_ETHERNET_BUF_MAX_SIZE
 
 wiz_NetInfo default_net_info = {
     .mac  = {0x00, 0x08, 0xdc, 0x12, 0x22, 0x12},
-    .ip   = {192, 168, 40, 39},
+    .ip   = {192, 168, 40, 117},
     .gw   = {192, 168, 39, 1},
     .sn   = {255, 255, 255, 0},
     .dns  = {8, 8, 8, 8},
-    .dhcp = NETINFO_STATIC}; // static ip
-uint8_t ethernet_buf[ETHERNET_BUF_MAX_SIZE] = {0};
+    .dhcp = NETINFO_STATIC};
 
-static uint8_t mqtt_send_ethernet_buf[ETHERNET_BUF_MAX_SIZE] = {0};
-static uint8_t mqtt_recv_ethernet_buf[ETHERNET_BUF_MAX_SIZE] = {0};
+uint8_t ethernet_buf[MQTT_ETHERNET_BUF_MAX_SIZE] = {0};
+
+static uint8_t mqtt_send_ethernet_buf[MQTT_ETHERNET_BUF_MAX_SIZE] = {0};
+static uint8_t mqtt_recv_ethernet_buf[MQTT_ETHERNET_BUF_MAX_SIZE] = {0};
+
+static bool mqtt_init_flag = false;
 
 // 函数声明
 static void timer_do_mqtt(void *arg);
+static void timer_do_mqtt_dns(void *arg);
+static void timer_do_http_dns(void *arg);
+
 static void app_mqtt_recv_msg(event_type_e event, void *params);
 static void app_parse_msg(const char *msg);
-void app_mqtt_init(uint8_t sn, uint8_t *send_buf, uint8_t *recv_buf);
+
+// void app_mqtt_init(uint8_t sn, uint8_t *ethernet_buf, uint8_t *send_buf, uint8_t *recv_buf);
+bool app_mqtt_init(uint8_t sn, uint8_t *ethernet_buf, uint8_t *send_buf, uint8_t *recv_buf);
+
+// void app_http_init(uint8_t sn, uint8_t *buf);
+bool app_http_init(uint8_t sn, uint8_t *buf);
+static void app_network_init(void *arg);
 static void message_arrived(MessageData *md);
 int connect_to_mqtt(void);
 int subscribe_topic(void);
@@ -90,6 +107,12 @@ static dispatch_map_t dispatch_table[] = {
     {"PanelInfo", handle_pinel_cfg},
 };
 
+uint8_t org_server_name[] = "httpbin.org";
+uint8_t org_server_ip[4]  = {0}; /*httpbin.org IP adress */
+uint8_t org_port          = 80;  /*httpbin.org port*/
+uint16_t len;
+
+static uint8_t network_flag = 0;
 void app_mqtt_model_init(void)
 {
     wiz_timer_init();
@@ -98,44 +121,94 @@ void app_mqtt_model_init(void)
     wizchip_initialize();
 
     network_init(ethernet_buf, &default_net_info); // 设置网络信息
-    wiz_NetInfo net_info;
-    wizchip_getnetinfo(&net_info);
-    app_mqtt_init(SOCKET_ID, mqtt_send_ethernet_buf, mqtt_recv_ethernet_buf);
+
+    app_timer_start(500, app_network_init, true, NULL, "NetWork"); // 初始化 MQTT 与 HTTP
     app_eventbus_subscribe(app_mqtt_recv_msg);
-    app_timer_start(500, timer_do_mqtt, true, NULL, "timer_do_mqtt");
 }
 
-void app_mqtt_init(uint8_t sn, uint8_t *send_buf, uint8_t *recv_buf)
+static void app_network_init(void *arg)
 {
-    wiz_NetInfo get_info = {0};
-    wizchip_getnetinfo(&get_info);
-    if (do_dns(send_buf, (uint8_t *)mqtt_params.mqttHostUrl, mqtt_params.server_ip)) {
-        if (mqtt_params.server_ip[0] != 0) {
-            printf("Use Default Server Internet Protocol Address:%d.%d.%d.%d\r\n", mqtt_params.server_ip[0], mqtt_params.server_ip[1], mqtt_params.server_ip[2], mqtt_params.server_ip[3]);
-        } else {
-            printf("No default server address, unable to connect to the server\r\n");
-            while (1) {
+    switch (network_flag) {
+        case 0: {
+            if (app_mqtt_init(MQTT_SOCKET_ID, ethernet_buf, mqtt_send_ethernet_buf, mqtt_recv_ethernet_buf)) {
+                network_flag++;
             }
+        } break;
+        case 1: {
+            app_http_init(HTTP_SOCKET_ID, ethernet_buf);
+            app_timer_stop("NetWork");
         }
     }
-    NewNetwork(&n, sn);                                          // 获取网络配置信息
-    ConnectNetwork(&n, mqtt_params.server_ip, mqtt_params.port); // 连接到 MQTT 服务器
-    MQTTClientInit(&c, &n, 1000, send_buf, MQTT_ETHERNET_MAX_SIZE, recv_buf, MQTT_ETHERNET_MAX_SIZE);
-    data.willFlag                     = 0;                                         /* will flag: If the will annotation bit is 0, the following will-related settings are invalid*/
-    willdata.qos                      = mqtt_params.willQoS;                       /* will QoS */
-    willdata.topicName.lenstring.data = mqtt_params.willtopic;                     /* will topic */
-    willdata.topicName.lenstring.len  = strlen(willdata.topicName.lenstring.data); /* will topic len */
-    willdata.message.lenstring.data   = mqtt_params.willmsg;                       /* will message */
-    willdata.message.lenstring.len    = strlen(willdata.message.lenstring.data);   /* will message len */
-    willdata.retained                 = 0;
-    willdata.struct_version           = 3;
-    data.will                         = willdata;
-    data.MQTTVersion                  = 4;
-    data.clientID.cstring             = mqtt_params.clientid;
-    data.username.cstring             = mqtt_params.username;
-    data.password.cstring             = mqtt_params.passwd;
-    data.keepAliveInterval            = 10;
-    data.cleansession                 = 1;
+}
+
+bool app_mqtt_init(uint8_t sn, uint8_t *ethernet_buf, uint8_t *send_buf, uint8_t *recv_buf)
+{
+    wiz_NetInfo net_info = {0};
+    wizchip_getnetinfo(&net_info); // 获取当前W5500网络配置信息
+    DNS_init(sn, ethernet_buf);    // DNS 初始化
+    bool mqtt_init_flag = 0;
+
+    switch (DNS_run(net_info.dns, (uint8_t *)mqtt_params.mqttHostUrl, mqtt_params.server_ip)) {
+        case DNS_RET_FAIL: {
+            APP_ERROR("DNS_RET_FAIL RET\n");
+            mqtt_init_flag = DNS_RET_FAIL;
+            break;
+        }
+        case DNS_RET_SUCCESS: {
+
+            NewNetwork(&n, sn);                                          // 获取网络配置信息
+            ConnectNetwork(&n, mqtt_params.server_ip, mqtt_params.port); // 连接到 MQTT 服务器
+            MQTTClientInit(&c, &n, 1000, send_buf, MQTT_ETHERNET_MAX_SIZE, recv_buf, MQTT_ETHERNET_MAX_SIZE);
+            data.willFlag                     = 0;                                         /* will flag: If the will annotation bit is 0, the following will-related settings are invalid*/
+            willdata.qos                      = mqtt_params.willQoS;                       /* will QoS */
+            willdata.topicName.lenstring.data = mqtt_params.willtopic;                     /* will topic */
+            willdata.topicName.lenstring.len  = strlen(willdata.topicName.lenstring.data); /* will topic len */
+            willdata.message.lenstring.data   = mqtt_params.willmsg;                       /* will message */
+            willdata.message.lenstring.len    = strlen(willdata.message.lenstring.data);   /* will message len */
+            willdata.retained                 = 0;
+            willdata.struct_version           = 3;
+            data.will                         = willdata;
+            data.MQTTVersion                  = 4;
+            data.clientID.cstring             = mqtt_params.clientid;
+            data.username.cstring             = mqtt_params.username;
+            data.password.cstring             = mqtt_params.passwd;
+            data.keepAliveInterval            = 10;
+            data.cleansession                 = 1;
+
+            mqtt_init_flag = DNS_RET_SUCCESS;
+            app_timer_start(500, timer_do_mqtt, true, NULL, "do_mqtt");
+            break;
+        }
+    }
+    return mqtt_init_flag;
+}
+
+bool app_http_init(uint8_t sn, uint8_t *buf)
+{
+    wiz_NetInfo net_info = {0};
+    wizchip_getnetinfo(&net_info); // 获取当前W5500网络配置信息
+    DNS_init(sn, buf);             // DNS 初始化
+
+    bool http_init_flag = false;
+    switch (DNS_run(net_info.dns, org_server_name, org_server_ip)) {
+        case DNS_RET_FAIL: {
+            APP_ERROR("DNS_RET_FAIL RET\n");
+            http_init_flag = DNS_RET_FAIL;
+            break;
+        }
+        case DNS_RET_SUCCESS: {
+            http_init_flag = DNS_RET_SUCCESS;
+            APP_PRINTF("DNS_RET_SUCCESS\n");
+            app_timer_stop("do_http_dns");
+            len = http_get_pkt(buf);
+            do_http_request(sn, buf, len, org_server_ip, org_port);
+
+            len = http_post_pkt(buf);
+            do_http_request(sn, buf, len, org_server_ip, org_port);
+            break;
+        }
+    }
+    return http_init_flag;
 }
 
 static uint8_t connect_status = CONNECT_MQTT;
@@ -164,7 +237,6 @@ static void timer_do_mqtt(void *arg)
             if (keep_alive() != SUCCESSS) {
                 connect_status = ERROR_STATUS;
             }
-            // APP_PRINTF("keep_alive\n");
             break;
         case ERROR_STATUS:
             if (retry_count < RETRY_MAX_COUNT) {
@@ -326,3 +398,46 @@ static void handle_pinel_cfg(cJSON *item)
     msg.panel_info[msg_len] = '\0';
     app_eventbus_publish(MQTT_PANEL_CFG_MSG, &msg);
 }
+
+#if 0
+uint32_t onenet_ota_post_pkt(uint8_t *pkt, const char *pro_id, const char *dev_name, const char *auth, const char *s_version, const char *f_version)
+{
+    char body[128];
+    *pkt = 0;
+
+    // 构造请求体
+    snprintf(body, sizeof(body), "{\"s_version\":\"%s\", \"f_version\":\"%s\"}", s_version, f_version);
+    int body_len = strlen(body);
+
+    // 构造请求行
+    strcat((char *)pkt, "POST /fuse-ota/");
+    strcat((char *)pkt, pro_id);
+    strcat((char *)pkt, "/");
+    strcat((char *)pkt, dev_name);
+    strcat((char *)pkt, "/version HTTP/1.1\r\n");
+
+    // Host 头
+    strcat((char *)pkt, "Host: iot-api.heclouds.com\r\n");
+
+    // Content-Type 头
+    strcat((char *)pkt, "Content-Type: application/json\r\n");
+
+    // Authorization 头
+    strcat((char *)pkt, "Authorization: ");
+    strcat((char *)pkt, auth);
+    strcat((char *)pkt, "\r\n");
+
+    // Content-Length 头
+    char len_buf[32];
+    snprintf(len_buf, sizeof(len_buf), "Content-Length: %d\r\n", body_len);
+    strcat((char *)pkt, len_buf);
+
+    // 空行分隔头部和正文
+    strcat((char *)pkt, "\r\n");
+
+    // 请求体
+    strcat((char *)pkt, body);
+
+    return strlen((char *)pkt);
+}
+#endif

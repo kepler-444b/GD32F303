@@ -82,6 +82,10 @@ virtualFolder:
         - path: ../../Source/app/app_public_config/app_public_config.h
         - path: ../../Source/app/app_base/app_base.c
         - path: ../../Source/app/app_base/app_base.h
+        - path: ../../Source/app/app_dns_model/app_dns_model.c
+        - path: ../../Source/app/app_dns_model/app_dns_model.h
+        - path: ../../Source/app/app_http_model/app_http_model.c
+        - path: ../../Source/app/app_http_model/app_http_model.h
       folders: []
     - name: Bsp
       files:
@@ -153,144 +157,8 @@ virtualFolder:
 dependenceList: []
 outDir: build
 miscInfo:
-  uid: b58e3e4c978670911e091760a36dabc1
+  uid: 217011e976fdaec97e30211f0afa2f1b
 targets:
-  GD32F30X_CL:
-    cppPreprocessAttrs:
-      defineList:
-        - USE_STDPERIPH_DRIVER
-        - GD32F30X_CL
-      incList:
-        - ../../Firmware/CMSIS
-        - ../../Firmware/CMSIS/GD/GD32F30x/Include
-        - ../../Firmware/GD32F30x_standard_peripheral/Include
-        - ../../Utilities
-        - ..
-        - .cmsis/include
-        - RTE/_GD32F30X_CL
-      libList: []
-    excludeList:
-      - <virtual_root>/Startup/startup_gd32f30x_hd.s
-      - <virtual_root>/Startup/startup_gd32f30x_xd.s
-    toolchain: AC6
-    toolchainConfigMap:
-      AC6:
-        archExtensions: ""
-        cpuType: Cortex-M4
-        floatingPointHardware: single
-        options:
-          version: 3
-          afterBuildTasks: []
-          asm-compiler:
-            $use: asm-auto
-            misc-controls: ""
-          beforeBuildTasks: []
-          c/cpp-compiler:
-            language-c: c99
-            language-cpp: c++11
-            link-time-optimization: false
-            one-elf-section-per-function: true
-            optimization: level-1
-            short-enums#wchar: true
-            warnings: ac5-like-warnings
-          global:
-            output-debug-info: enable
-            use-microLIB: true
-          linker:
-            $disableOutputTask: true
-            $outputTaskExcludes:
-              - .bin
-            misc-controls: --diag_suppress=L6329
-            output-format: elf
-            ro-base: "0x08000000"
-            rw-base: "0x20000000"
-            xo-base: ""
-        scatterFilePath: output/Project.sct
-        storageLayout:
-          RAM:
-            - id: 1
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 2
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 3
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 1
-              isChecked: true
-              mem:
-                size: "0x18000"
-                startAddr: "0x20000000"
-              noInit: false
-              tag: IRAM
-            - id: 2
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: IRAM
-          ROM:
-            - id: 1
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 2
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 3
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 1
-              isChecked: true
-              isStartup: true
-              mem:
-                size: "0x40000"
-                startAddr: "0x8000000"
-              tag: IROM
-            - id: 2
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: IROM
-        useCustomScatterFile: false
-    uploadConfigMap:
-      JLink:
-        baseAddr: ""
-        bin: ""
-        cpuInfo:
-          cpuName: "null"
-          vendor: "null"
-        otherCmds: ""
-        proType: 1
-        speed: 8000
-    uploader: JLink
   GD32F30X_HD:
     cppPreprocessAttrs:
       defineList:
@@ -319,14 +187,12 @@ targets:
           afterBuildTasks: []
           asm-compiler:
             $use: asm-auto
-            misc-controls: ""
           beforeBuildTasks: []
           c/cpp-compiler:
             language-c: c99
             language-cpp: c++11
-            link-time-optimization: false
             one-elf-section-per-function: true
-            optimization: level-1
+            optimization: level-2
             short-enums#wchar: true
             warnings: ac5-like-warnings
           global:
@@ -335,11 +201,11 @@ targets:
           linker:
             $outputTaskExcludes:
               - .bin
+              - .s19
             misc-controls: --diag_suppress=L6329
             output-format: elf
             ro-base: "0x08000000"
             rw-base: "0x20000000"
-            xo-base: ""
         scatterFilePath: ""
         storageLayout:
           RAM:
@@ -420,143 +286,8 @@ targets:
         baseAddr: ""
         bin: ""
         cpuInfo:
-          cpuName: GD32F303VC
+          cpuName: GD32F303VCT6
           vendor: GigaDevice
-        otherCmds: ""
-        proType: 1
-        speed: 8000
-    uploader: JLink
-  GD32F30X_XD:
-    cppPreprocessAttrs:
-      defineList:
-        - USE_STDPERIPH_DRIVER
-        - GD32F30X_XD
-      incList:
-        - ../../Firmware/CMSIS
-        - ../../Firmware/CMSIS/GD/GD32F30x/Include
-        - ../../Firmware/GD32F30x_standard_peripheral/Include
-        - ../../Utilities
-        - ..
-        - .cmsis/include
-        - RTE/_GD32F30X_XD
-      libList: []
-    excludeList:
-      - <virtual_root>/Startup/startup_gd32f30x_cl.s
-      - <virtual_root>/Startup/startup_gd32f30x_hd.s
-    toolchain: AC6
-    toolchainConfigMap:
-      AC6:
-        archExtensions: ""
-        cpuType: Cortex-M4
-        floatingPointHardware: single
-        options:
-          version: 3
-          afterBuildTasks: []
-          asm-compiler:
-            $use: asm-auto
-            misc-controls: ""
-          beforeBuildTasks: []
-          c/cpp-compiler:
-            language-c: c99
-            language-cpp: c++11
-            link-time-optimization: false
-            one-elf-section-per-function: true
-            optimization: level-1
-            short-enums#wchar: true
-            warnings: ac5-like-warnings
-          global:
-            output-debug-info: enable
-            use-microLIB: true
-          linker:
-            $outputTaskExcludes:
-              - .bin
-            misc-controls: --diag_suppress=L6329
-            output-format: elf
-            ro-base: "0x08000000"
-            rw-base: "0x20000000"
-            xo-base: ""
-        scatterFilePath: ""
-        storageLayout:
-          RAM:
-            - id: 1
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 2
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 3
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: RAM
-            - id: 1
-              isChecked: true
-              mem:
-                size: "0x18000"
-                startAddr: "0x20000000"
-              noInit: false
-              tag: IRAM
-            - id: 2
-              isChecked: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              noInit: false
-              tag: IRAM
-          ROM:
-            - id: 1
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 2
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 3
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: ROM
-            - id: 1
-              isChecked: true
-              isStartup: true
-              mem:
-                size: "0x300000"
-                startAddr: "0x8000000"
-              tag: IROM
-            - id: 2
-              isChecked: false
-              isStartup: false
-              mem:
-                size: "0x0"
-                startAddr: "0x0"
-              tag: IROM
-        useCustomScatterFile: false
-    uploadConfigMap:
-      JLink:
-        baseAddr: ""
-        bin: ""
-        cpuInfo:
-          cpuName: "null"
-          vendor: "null"
         otherCmds: ""
         proType: 1
         speed: 8000

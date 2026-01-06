@@ -142,19 +142,23 @@ bool app_timer_is_active(const char *name)
 void app_timer_poll(void)
 {
     for (int i = 0; i < MAX_SOFT_TIMERS; i++) {
-        if (my_soft_timer[i].state == TIMER_STATE_PENDING) {
-            // 执行回调
-            if (my_soft_timer[i].callback) {
-                my_soft_timer[i].callback(my_soft_timer[i].user_arg);
-            }
 
-            // 更新状态和 start_time
-            if (my_soft_timer[i].repeat) {
-                my_soft_timer[i].start_time = system_ticks; // 在 poll 中更新 start_time
-                my_soft_timer[i].state      = TIMER_STATE_ACTIVE;
-            } else {
-                my_soft_timer[i].state = TIMER_STATE_INACTIVE;
-            }
+        soft_timer_t *t = &my_soft_timer[i];
+
+        if (t->state != TIMER_STATE_PENDING) // 未到期 / 未启用 的定时器直接跳过
+            continue;
+
+        if (t->callback) { // 先执行回调(允许回调内部改变定时器状态)
+            t->callback(t->user_arg);
+        }
+        if (t->state == TIMER_STATE_INACTIVE) // 回调中可能手动停止定时器,如果被置为 INACTIVE,则不再做后续周期处理
+            continue;
+
+        if (t->repeat) { // 周期性定时器：重新激活，并记录当前起点
+            t->start_time = system_ticks;
+            t->state      = TIMER_STATE_ACTIVE;
+        } else { // 单次定时器：到期后标记为失效
+            t->state = TIMER_STATE_INACTIVE;
         }
     }
 }

@@ -15,21 +15,15 @@
 void wizchip_version_check(void)
 {
     uint8_t error_count = 0;
-    while (1)
-    {
+    while (1) {
         delay_1ms(1000);
-        if (getVERSIONR() != W5500_VERSION)
-        {
+        if (getVERSIONR() != W5500_VERSION) {
             error_count++;
-            if (error_count > 5)
-            {
+            if (error_count > 5) {
                 printf("error, %s version is 0x%02x, but read %s version value = 0x%02x\r\n", _WIZCHIP_ID_, W5500_VERSION, _WIZCHIP_ID_, getVERSIONR());
-                while (1)
-                    ;
+                while (1);
             }
-        }
-        else
-        {
+        } else {
             // uint8_t ver = getVERSIONR();
             // printf("W5500 VERSION: 0x%02X\n", ver);
             break;
@@ -54,17 +48,13 @@ void wiz_print_phy_info(void)
 void wiz_phy_link_check(void)
 {
     uint8_t phy_link_status;
-    do
-    {
+    do {
         delay_1ms(1000);
         ctlwizchip(CW_GET_PHYLINK, (void *)&phy_link_status);
-        if (phy_link_status == PHY_LINK_ON)
-        {
+        if (phy_link_status == PHY_LINK_ON) {
             printf("PHY link\r\n");
             wiz_print_phy_info();
-        }
-        else
-        {
+        } else {
             printf("PHY no link\r\n");
         }
     } while (phy_link_status == PHY_LINK_OFF);
@@ -100,13 +90,10 @@ void print_network_information(void)
     wiz_NetInfo net_info;
     wizchip_getnetinfo(&net_info); // Get chip configuration information
 
-    if (net_info.dhcp == NETINFO_DHCP)
-    {
+    if (net_info.dhcp == NETINFO_DHCP) {
         printf("====================================================================================================\r\n");
         printf(" %s network configuration : DHCP\r\n\r\n", _WIZCHIP_ID_);
-    }
-    else
-    {
+    } else {
         printf("====================================================================================================\r\n");
         printf(" %s network configuration : static\r\n\r\n", _WIZCHIP_ID_);
     }
@@ -128,37 +115,33 @@ static uint8_t wiz_dhcp_process(uint8_t sn, uint8_t *buffer)
 {
     wiz_NetInfo conf_info;
     uint8_t dhcp_run_flag = 1;
-    uint8_t dhcp_ok_flag = 0;
+    uint8_t dhcp_ok_flag  = 0;
     /* Registration DHCP_time_handler to 1 second timer */
     DHCP_init(sn, buffer);
     printf("DHCP running\r\n");
-    while (1)
-    {
+    while (1) {
         switch (DHCP_run()) // Do the DHCP client
         {
-        case DHCP_IP_LEASED: // DHCP Acquiring network information successfully
-        {
-            if (dhcp_ok_flag == 0)
+            case DHCP_IP_LEASED: // DHCP Acquiring network information successfully
             {
-                dhcp_ok_flag = 1;
-                dhcp_run_flag = 0;
+                if (dhcp_ok_flag == 0) {
+                    dhcp_ok_flag  = 1;
+                    dhcp_run_flag = 0;
+                }
+                break;
             }
-            break;
+            case DHCP_FAILED: {
+                dhcp_run_flag = 0;
+                break;
+            }
         }
-        case DHCP_FAILED: {
-            dhcp_run_flag = 0;
-            break;
-        }
-        }
-        if (dhcp_run_flag == 0)
-        {
+        if (dhcp_run_flag == 0) {
             printf("DHCP %s!\r\n", dhcp_ok_flag ? "success" : "fail");
             DHCP_stop();
 
             /*DHCP obtained successfully, cancel the registration DHCP_time_handler*/
 
-            if (dhcp_ok_flag)
-            {
+            if (dhcp_ok_flag) {
                 getIPfromDHCP(conf_info.ip);
                 getGWfromDHCP(conf_info.gw);
                 getSNfromDHCP(conf_info.sn);
@@ -188,11 +171,9 @@ void network_init(uint8_t *ethernet_buff, wiz_NetInfo *conf_info)
 {
     int ret;
     wizchip_setnetinfo(conf_info); // Configuring Network Information
-    if (conf_info->dhcp == NETINFO_DHCP)
-    {
+    if (conf_info->dhcp == NETINFO_DHCP) {
         ret = wiz_dhcp_process(0, ethernet_buff);
-        if (ret == 0)
-        {
+        if (ret == 0) {
             conf_info->dhcp = NETINFO_STATIC;
             wizchip_setnetinfo(conf_info);
         }

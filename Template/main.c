@@ -54,6 +54,8 @@ int main(void)
     app_eventbus_init();
     app_protocol_init();
     dev_manmager_init();
+
+    
     app_mqtt_model_init();
 
     while (1) {

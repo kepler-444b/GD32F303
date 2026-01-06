@@ -2,8 +2,31 @@
 #define _APP_MQTT_MODEL_H_
 
 #include "../Source/w5500/ioLibrary_Driver/Internet/MQTT/MQTTClient.h"
+#include "../Source/w5500/ioLibrary_Driver/Ethernet/wizchip_conf.h"
 #include "../Source/cjson/cJSON.h"
 #include <stdio.h>
+
+#define DNS_RET_FAIL    0  // DNS 域名解析失败
+#define DNS_RET_SUCCESS 1  // DNS 域名解析成功
+#define DNS_RETRY       10 /* 3 times */
+
+typedef struct
+{
+    wiz_NetInfo netinfo;
+    uint8_t *domain_name;
+    uint8_t *domain_ip;
+    uint8_t *recv_buf; // mqtt 接收缓冲区
+    uint8_t *send_buf; // mqtt 发送缓冲区
+    uint8_t sn;
+} mqtt_dns_info_t;
+
+typedef struct {
+    wiz_NetInfo netinfo;
+    uint8_t *ethernet_buf;
+    uint8_t *domain_name;
+    uint8_t *domain_ip;
+    uint8_t sn;
+} http_dns_info_t;
 
 typedef struct MQTTCONNECTION {
     char mqttHostUrl[128]; /*Server URL*/
