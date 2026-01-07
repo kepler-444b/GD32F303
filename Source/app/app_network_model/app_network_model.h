@@ -1,28 +1,32 @@
-#ifndef _APP_MQTT_MODEL_H_
-#define _APP_MQTT_MODEL_H_
+#ifndef _APP_NETWORK_MODEL_H_
+#define _APP_NETWORK_MODEL_H_
 
 #include "../Source/w5500/ioLibrary_Driver/Internet/MQTT/MQTTClient.h"
 #include "../Source/w5500/ioLibrary_Driver/Ethernet/wizchip_conf.h"
 #include "../Source/cjson/cJSON.h"
 #include <stdio.h>
 
-#define DNS_RET_FAIL    0  // DNS 域名解析失败
-#define DNS_RET_SUCCESS 1  // DNS 域名解析成功
-#define DNS_RETRY       10 /* 3 times */
+// MQTT 连接状态
+typedef enum {
+    CONNECT_MQTT,
+    SUB_TOPIC,
+    KEEP_ALIVE,
+    ERROR_STATUS
+} mqtt_status_e;
 
 typedef struct
 {
     wiz_NetInfo netinfo;
     uint8_t *domain_name;
     uint8_t *domain_ip;
-    uint8_t *recv_buf; // mqtt 接收缓冲区
-    uint8_t *send_buf; // mqtt 发送缓冲区
+    uint8_t *recv_buf;
+    uint8_t *send_buf;
     uint8_t sn;
 } mqtt_dns_info_t;
 
 typedef struct {
     wiz_NetInfo netinfo;
-    uint8_t *ethernet_buf;
+    uint8_t *buf;
     uint8_t *domain_name;
     uint8_t *domain_ip;
     uint8_t sn;
@@ -62,6 +66,6 @@ typedef struct {
     dispatch_handler_t handler;
 } dispatch_map_t;
 
-void app_mqtt_model_init(void);
+void app_network_model_init(void);
 
 #endif

@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "gd32f30x_usart.h"
 
-#define RTT_ENABLE // 启用 RTT 调试
+// #define RTT_ENABLE // 启用 RTT 调试
 
 #define APP_DEBUG  // 此宏用来管理整个工程的 debug 信息
 

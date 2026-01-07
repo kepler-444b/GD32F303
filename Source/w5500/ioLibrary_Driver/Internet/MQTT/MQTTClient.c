@@ -40,7 +40,7 @@ static int sendPacket(MQTTClient *c, int length, Timer *timer)
     if (sent == length) {
         TimerCountdown(&c->ping_timer, c->keepAliveInterval); // record the fact that we have successfully sent the packet
         rc = SUCCESSS;
-        printf("SUCCESSS\n");
+        // printf("SUCCESSS\n");
     } else {
         rc = FAILURE;
         printf("FAILURE\n");
@@ -196,7 +196,7 @@ int keepalive(MQTTClient *c)
             if (len > 0 && (rc = sendPacket(c, len, &timer)) == SUCCESSS) { // send the ping packet
                 // 已经发送了一个 PINGREQ 心跳包
                 c->ping_outstanding = 1;
-                printf("send the ping packet\n");
+                // printf("send the ping packet\n");
             }
         }
     }
@@ -258,7 +258,7 @@ int cycle(MQTTClient *c, Timer *timer)
         case PUBCOMP:
             break;
         case PINGRESP:
-            printf("PINGRESP\n");
+            // printf("PINGRESP\n");
             c->ping_outstanding = 0;
             break;
     }

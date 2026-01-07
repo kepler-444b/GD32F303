@@ -400,6 +400,26 @@
               <FileType>1</FileType>
               <FilePath>..\systick.c</FilePath>
             </File>
+            <File>
+              <FileName>gd32f30x_it.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\gd32f30x_it.h</FilePath>
+            </File>
+            <File>
+              <FileName>gd32f30x_libopt.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\gd32f30x_libopt.h</FilePath>
+            </File>
+            <File>
+              <FileName>main.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\main.h</FilePath>
+            </File>
+            <File>
+              <FileName>systick.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\systick.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -712,16 +732,6 @@
               <FilePath>..\..\Source\app\app_protocol\app_protocol.h</FilePath>
             </File>
             <File>
-              <FileName>app_mqtt_model.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\..\Source\app\app_mqtt_model\app_mqtt_model.c</FilePath>
-            </File>
-            <File>
-              <FileName>app_mqtt_model.h</FileName>
-              <FileType>5</FileType>
-              <FilePath>..\..\Source\app\app_mqtt_model\app_mqtt_model.h</FilePath>
-            </File>
-            <File>
               <FileName>app_public_protocol.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\Source\app\app_public_protocol\app_public_protocol.c</FilePath>
@@ -750,6 +760,26 @@
               <FileName>app_base.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\Source\app\app_base\app_base.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_http_ota.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_network_model\app_http_ota.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_http_ota.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_network_model\app_http_ota.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_network_model.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_network_model\app_network_model.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_network_model.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_network_model\app_network_model.h</FilePath>
             </File>
           </Files>
         </Group>

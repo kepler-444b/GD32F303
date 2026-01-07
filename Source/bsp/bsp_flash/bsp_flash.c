@@ -1,7 +1,5 @@
 #include "bsp_flash.h"
 
-#define FLASH_PAGE_SIZE ((uint16_t)0x800) // 单页大小 2KB
-
 __IO fmc_state_enum app_flash_write_word(uint32_t flash_start_addr, uint32_t *buffer, uint32_t byte_length)
 {
     fmc_state_enum flash_status = FMC_READY;

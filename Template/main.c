@@ -3,32 +3,12 @@
 #include "../Source/app/app_evenbus/app_eventbus.h"
 #include "../Source/app/app_protocol/app_protocol.h"
 #include "../Source/app/app_timer/app_timer.h"
-#include "../Source/app/app_mqtt_model/app_mqtt_model.h"
+#include "../Source/app/app_network_model/app_network_model.h"
 #include "../Source/dev/dev_manager.h"
-#include "../Source/w5500/ioLibrary_Driver/Ethernet/wizchip_conf.h"
-#include "../Source/w5500/wiz_interface/wiz_interface.h"
-#include "../Source/w5500/wiz_platform/wiz_platform.h"
 #include "gd32f30x.h"
 #include "systick.h"
 #include <stdio.h>
 
-#if 0
-#define SOCKET_ID             0
-#define ETHERNET_BUF_MAX_SIZE (1024 * 2)
-
-/* network information */
-wiz_NetInfo default_net_info = {
-    .mac = {0x00, 0x08, 0xdc, 0x12, 0x22, 0x12},
-    .ip = {192, 168, 40, 30},
-    .gw = {192, 168, 39, 1},
-    .sn = {255, 255, 255, 0},
-    .dns = {8, 8, 8, 8},
-    .dhcp = NETINFO_STATIC}; // static ip
-uint8_t ethernet_buf[ETHERNET_BUF_MAX_SIZE] = {0};
-
-static uint8_t mqtt_send_ethernet_buf[ETHERNET_BUF_MAX_SIZE] = {0};
-static uint8_t mqtt_recv_ethernet_buf[ETHERNET_BUF_MAX_SIZE] = {0};
-#endif
 int main(void)
 {
 #ifdef __FIRMWARE_VERSION_DEFINE
@@ -55,8 +35,7 @@ int main(void)
     app_protocol_init();
     dev_manmager_init();
 
-    
-    app_mqtt_model_init();
+    app_network_model_init();
 
     while (1) {
         app_timer_poll();

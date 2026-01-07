@@ -13,6 +13,9 @@ virtualFolder:
         - path: ../gd32f30x_it.c
         - path: ../main.c
         - path: ../systick.c
+        - path: ../main.h
+        - path: ../gd32f30x_it.h
+        - path: ../systick.h
       folders: []
     - name: CMSIS
       files:
@@ -74,8 +77,6 @@ virtualFolder:
         - path: ../../Source/app/app_evenbus/app_eventbus.h
         - path: ../../Source/app/app_protocol/app_protocol.c
         - path: ../../Source/app/app_protocol/app_protocol.h
-        - path: ../../Source/app/app_mqtt_model/app_mqtt_model.c
-        - path: ../../Source/app/app_mqtt_model/app_mqtt_model.h
         - path: ../../Source/app/app_public_protocol/app_public_protocol.c
         - path: ../../Source/app/app_public_protocol/app_public_protocol.h
         - path: ../../Source/app/app_public_config/app_public_config.c
@@ -84,8 +85,10 @@ virtualFolder:
         - path: ../../Source/app/app_base/app_base.h
         - path: ../../Source/app/app_dns_model/app_dns_model.c
         - path: ../../Source/app/app_dns_model/app_dns_model.h
-        - path: ../../Source/app/app_http_model/app_http_model.c
-        - path: ../../Source/app/app_http_model/app_http_model.h
+        - path: ../../Source/app/app_network_model/app_network_model.c
+        - path: ../../Source/app/app_network_model/app_network_model.h
+        - path: ../../Source/app/app_network_model/app_http_ota.c
+        - path: ../../Source/app/app_network_model/app_http_ota.h
       folders: []
     - name: Bsp
       files:

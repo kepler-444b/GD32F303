@@ -117,6 +117,20 @@ void bsp_usart_init(uint32_t usart_com, uint32_t baudrate)
         usart_interrupt_enable(usart_com, USART_INT_RBNE); // USART 非空中断
         nvic_irq_enable(UART4_IRQn, 0, 1);
     }
+    if (usart_com == USART1) {
+        bsp_usart1_init();
+
+        usart_deinit(usart_com);
+        usart_baudrate_set(usart_com, baudrate);
+        usart_word_length_set(usart_com, USART_WL_8BIT);
+        usart_stop_bit_set(usart_com, USART_STB_1BIT);
+        usart_parity_config(usart_com, USART_PM_NONE);
+        usart_hardware_flow_rts_config(usart_com, USART_RTS_DISABLE);
+        usart_hardware_flow_cts_config(usart_com, USART_CTS_DISABLE);
+        usart_transmit_config(usart_com, USART_TRANSMIT_ENABLE);
+        usart_receive_config(usart_com, USART_RECEIVE_ENABLE);
+        usart_enable(usart_com);
+    }
 }
 
 static void USART2_dma_send_data(const uint8_t *data, uint16_t len)
@@ -149,7 +163,7 @@ static void UART4_send_data(const uint8_t *data, uint16_t len)
 
     RD4_SET_H; // 拉高,准备发送
     for (uint16_t i = 0; i < len; i++) {
-        while (RESET == usart_flag_get(UART4, USART_FLAG_TBE));
+        while (RESET == usart_flag_get(UART4, USART_FLAG_TC));
         usart_data_transmit(UART4, data[i]);
     }
 }
@@ -230,7 +244,7 @@ int fputc(int ch, FILE *f)
     SEGGER_RTT_PutChar(0, ch);
 #else
     usart_data_transmit(USART1, (uint8_t)ch);
-    while (RESET == usart_flag_get(USART1, USART_FLAG_TBE)) {
+    while (RESET == usart_flag_get(USART1, USART_FLAG_TC)) {
         ;
     }
 #endif

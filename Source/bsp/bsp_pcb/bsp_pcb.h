@@ -10,6 +10,7 @@
 #define RD4_SET_H BSP_SET_GPIO(PD1, true)
 #define RD4_SET_L BSP_SET_GPIO(PD1, false)
 
+void bsp_usart1_init(void);
 void bsp_usart2_init(void);
 void bsp_usart4_init(void);
 
