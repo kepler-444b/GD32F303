@@ -11,24 +11,10 @@
 
 int main(void)
 {
-#ifdef __FIRMWARE_VERSION_DEFINE
-    uint32_t fw_ver = 0;
-#endif
+    __enable_irq();
 
-    /* configure systick */
     systick_config();
     delay_1ms(100);
-    printf("\r\nCK_SYS is %d", rcu_clock_freq_get(CK_SYS));
-    printf("\r\nCK_AHB is %d", rcu_clock_freq_get(CK_AHB));
-    printf("\r\nCK_APB1 is %d", rcu_clock_freq_get(CK_APB1));
-    printf("\r\nCK_APB2 is %d", rcu_clock_freq_get(CK_APB2));
-    printf("\n");
-
-#ifdef __FIRMWARE_VERSION_DEFINE
-    fw_ver = gd32f30x_firmware_version_get();
-    /* print firmware version */
-    // printf("\r\nGD32F30x series firmware version: V%d.%d.%d", (uint8_t)(fw_ver >> 24), (uint8_t)(fw_ver >> 16), (uint8_t)(fw_ver >> 8));
-#endif /* __FIRMWARE_VERSION_DEFINE */
 
     app_timer_init();
     app_eventbus_init();

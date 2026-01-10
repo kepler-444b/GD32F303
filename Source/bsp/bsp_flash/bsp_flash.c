@@ -1,4 +1,5 @@
 #include "bsp_flash.h"
+#include "../Source/bsp/bsp_usart/bsp_usart.h"
 
 __IO fmc_state_enum app_flash_write_word(uint32_t flash_start_addr, uint32_t *buffer, uint32_t byte_length)
 {
@@ -49,6 +50,41 @@ __IO fmc_state_enum app_flash_write_word(uint32_t flash_start_addr, uint32_t *bu
     fmc_lock(); // 锁定 Flash
 
     return flash_status;
+}
+
+__IO fmc_state_enum app_flash_write_page(uint32_t page_addr, uint32_t *buffer, uint32_t byte_length)
+{
+    fmc_state_enum status = FMC_READY;
+
+    // 1. 基础对齐检查
+    if ((page_addr % FLASH_PAGE_SIZE) != 0) {
+        return FMC_PGERR;
+    }
+
+    fmc_unlock();
+
+    // 2. 关键：在操作前必须清除之前的异常状态位，否则后续指令可能被硬件忽略
+    fmc_flag_clear(FMC_FLAG_BANK0_END | FMC_FLAG_BANK0_WPERR | FMC_FLAG_BANK0_PGERR);
+
+    // 3. 执行擦除
+    status = fmc_page_erase(page_addr);
+    if (status != FMC_READY) {
+        fmc_lock();
+        return status;
+    }
+
+    // 4. 循环写入数据
+    uint32_t word_len = (byte_length + 3) / 4;
+    for (uint32_t i = 0; i < word_len; i++) {
+        // 直接编程，只依靠硬件返回的 status 确认是否成功
+        status = fmc_word_program(page_addr + (i * 4), buffer[i]);
+
+        // 如果硬件报错（如写保护或电压不稳），及时跳出
+        if (status != FMC_READY) break;
+    }
+
+    fmc_lock();
+    return status;
 }
 
 __IO fmc_state_enum app_flash_read_word(uint32_t flash_start_addr, uint32_t *buffer, uint32_t byte_length)

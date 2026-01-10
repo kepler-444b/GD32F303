@@ -34,7 +34,6 @@ void bsp_uart4_rx_callback(uart_rx4_callback_t callback)
 void bsp_usart_init(uint32_t usart_com, uint32_t baudrate)
 {
     if (usart_com == USART2) {
-
         bsp_usart2_init();
 
         RD2_SET_L; // 拉低 485使能脚(接收模式)
@@ -98,7 +97,6 @@ void bsp_usart_init(uint32_t usart_com, uint32_t baudrate)
     }
 
     if (usart_com == UART4) {
-
         bsp_usart4_init();
         RD4_SET_L;
 

@@ -1,4 +1,5 @@
 #include "app_network_model.h"
+#include "app_network_info.h"
 #include "systick.h"
 #include "../Source/app/app_evenbus/app_eventbus.h"
 #include "../Source/app/app_base/app_base.h"
@@ -8,12 +9,8 @@
 #include "../Source/w5500/ioLibrary_Driver/Internet/DNS/dns.h"
 #include "../Source/w5500/wiz_interface/wiz_interface.h"
 #include "../Source/w5500/wiz_platform/wiz_platform.h"
-#include "../Source/app/app_network_model/app_http_ota.h"
 #include "../Source/w5500/ioLibrary_Driver/Ethernet/socket.h"
-
-#define PASSWD   "version=2018-10-31&res=products%2F0GNFSdkNeZ%2Fdevices%2Flight_1&et=1924992000&method=md5&sign=TS9AJ8IVVrwGZ4S7u4Kk0w%3D%3D"
-#define PRODUCTS "0GNFSdkNeZ"
-#define DEVICES  "light_1"
+#include "../Source/app/app_network_model/app_http_ota.h"
 
 MQTTClient c = {0};
 Network n    = {0};
@@ -49,12 +46,6 @@ MQTTPacket_willOptions willdata = MQTTPacket_willOptions_initializer; /* Will su
 MQTTPacket_connectData data     = MQTTPacket_connectData_initializer; /*Define the parameters of the MQTT connection*/
 unsigned char *data_ptr         = NULL;
 
-#define MQTT_SOCKET_ID             0
-#define HTTP_SOCKET_ID             1
-
-#define MQTT_ETHERNET_BUF_MAX_SIZE 1024
-#define MQTT_ETHERNET_MAX_SIZE     1024
-
 wiz_NetInfo default_net_info = {
     .mac  = {0x00, 0x08, 0xdc, 0x12, 0x22, 0x12},
     .ip   = {192, 168, 40, 117},
@@ -63,12 +54,10 @@ wiz_NetInfo default_net_info = {
     .dns  = {8, 8, 8, 8},
     .dhcp = NETINFO_STATIC};
 
-// uint8_t ethernet_buf[MQTT_ETHERNET_BUF_MAX_SIZE] = {0};
+uint8_t ethernet_buf[ETHERNET_BUF_SIZE] = {0};
 
-uint8_t ethernet_buf[2048] = {0};
-
-static uint8_t mqtt_send_ethernet_buf[MQTT_ETHERNET_BUF_MAX_SIZE] = {0};
-static uint8_t mqtt_recv_ethernet_buf[MQTT_ETHERNET_BUF_MAX_SIZE] = {0};
+static uint8_t mqtt_send_ethernet_buf[MQTT_ETHERNET_BUF_SIZE] = {0};
+static uint8_t mqtt_recv_ethernet_buf[MQTT_ETHERNET_BUF_SIZE] = {0};
 
 // 函数声明
 static void timer_do_mqtt(void *arg);
@@ -107,7 +96,6 @@ void app_network_model_init(void)
     wiz_rst_int_init();
     wiz_spi_init();
     wizchip_initialize();
-
     network_init(ethernet_buf, &default_net_info); // 设置网络信息
 
     app_timer_start(500, app_network_init, true, NULL, "NetWork"); // 初始化 MQTT 与 HTTP
@@ -140,10 +128,10 @@ static void app_network_init(void *arg)
         case 2: { // 解析 HTTP dns
             DNS_init(HTTP_SOCKET_ID, ethernet_buf);
             if (DNS_run(net_info.dns, org_server_name, org_server_ip)) {
-                APP_PRINTF("DNS_run MQTT SUCCESS\n");
+                APP_PRINTF("DNS_run HTTP SUCCESS\n");
                 network_flag++;
             } else {
-                APP_ERROR("DNS_run MQTT FAIL");
+                APP_ERROR("DNS_run HTTP FAIL");
             }
         } break;
         case 3: { // 初始化 HTTP
@@ -161,7 +149,8 @@ static bool app_mqtt_init(void)
     if (!ConnectNetwork(&n, mqtt_params.server_ip, mqtt_params.port)) { // 连接到 MQTT 服务器
         return false;
     }
-    MQTTClientInit(&c, &n, 1000, mqtt_send_ethernet_buf, MQTT_ETHERNET_MAX_SIZE, mqtt_recv_ethernet_buf, MQTT_ETHERNET_MAX_SIZE);
+
+    MQTTClientInit(&c, &n, 1000, mqtt_send_ethernet_buf, MQTT_ETHERNET_BUF_SIZE, mqtt_recv_ethernet_buf, MQTT_ETHERNET_BUF_SIZE);
     data.willFlag                     = 0;                                         /* will flag: If the will annotation bit is 0, the following will-related settings are invalid*/
     willdata.qos                      = mqtt_params.willQoS;                       /* will QoS */
     willdata.topicName.lenstring.data = mqtt_params.willtopic;                     /* will topic */
@@ -184,21 +173,7 @@ static bool app_mqtt_init(void)
 
 static bool app_http_init(void)
 {
-    // 上报当前固件版本
-    memset(ethernet_buf, 0, sizeof(ethernet_buf));
-    len = ota_post_version(ethernet_buf, PRODUCTS, DEVICES, PASSWD, "V1.1", "V1.0");
-    do_http_request(HTTP_SOCKET_ID, ethernet_buf, len, org_server_ip, org_port);
-
-    // 获取升级任务
-    memset(ethernet_buf, 0, sizeof(ethernet_buf));
-    len = ota_get_update_task(ethernet_buf, sizeof(ethernet_buf), PRODUCTS, DEVICES, "2", "1.1", PASSWD);
-    do_http_request(HTTP_SOCKET_ID, ethernet_buf, len, org_server_ip, org_port);
-
-    // 下载固件包
-    memset(ethernet_buf, 0, sizeof(ethernet_buf));
-    len = ota_get_download(ethernet_buf, sizeof(ethernet_buf), PRODUCTS, DEVICES, 1301007, PASSWD, "bytes=0-2047");
-    do_http_request(HTTP_SOCKET_ID, ethernet_buf, len, org_server_ip, org_port);
-    // app_timer_start(500, timer_do_http, true, NULL, "do_http");
+    app_ota_check(HTTP_SOCKET_ID, org_server_name, org_server_ip, org_port, ethernet_buf);
     return true;
 }
 

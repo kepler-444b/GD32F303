@@ -89,6 +89,9 @@ virtualFolder:
         - path: ../../Source/app/app_network_model/app_network_model.h
         - path: ../../Source/app/app_network_model/app_http_ota.c
         - path: ../../Source/app/app_network_model/app_http_ota.h
+        - path: ../../Source/app/app_network_model/app_network_info.h
+        - path: ../../Source/app/app_md5/app_md5.c
+        - path: ../../Source/app/app_md5/app_md5.h
       folders: []
     - name: Bsp
       files:
@@ -203,7 +206,6 @@ targets:
             use-microLIB: true
           linker:
             $outputTaskExcludes:
-              - .bin
               - .s19
             misc-controls: --diag_suppress=L6329
             output-format: elf
@@ -273,8 +275,8 @@ targets:
               isChecked: true
               isStartup: true
               mem:
-                size: "0x40000"
-                startAddr: "0x8000000"
+                size: "0x19000"
+                startAddr: "0x8004000"
               tag: IROM
             - id: 2
               isChecked: false
