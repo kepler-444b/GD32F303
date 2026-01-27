@@ -208,7 +208,7 @@ static void md5_process( md5_context *ctx, const unsigned char data[64] )
 /*
  * MD5 process buffer
  */
-void md5_update( md5_context *ctx, const unsigned char *input, int ilen )
+void app_md5_update( md5_context *ctx, const unsigned char *input, int ilen )
 {
     int fill;
     unsigned long left;
@@ -276,8 +276,8 @@ void md5_finish( md5_context *ctx, unsigned char output[16] )
     last = ctx->total[0] & 0x3F;
     padn = ( last < 56 ) ? ( 56 - last ) : ( 120 - last );
 
-    md5_update( ctx, md5_padding, padn );
-    md5_update( ctx, msglen, 8 );
+    app_md5_update( ctx, md5_padding, padn );
+    app_md5_update( ctx, msglen, 8 );
 
     PUT_ULONG_LE( ctx->state[0], output,  0 );
     PUT_ULONG_LE( ctx->state[1], output,  4 );
@@ -293,7 +293,7 @@ void md5( unsigned char *input, int ilen, unsigned char output[16] )
     md5_context ctx;
 
     md5_starts( &ctx );
-    md5_update( &ctx, input, ilen );
+    app_md5_update( &ctx, input, ilen );
     md5_finish( &ctx, output );
 }
 

@@ -1,7 +1,8 @@
 #include "app_public_protocol.h"
 #include "../Source/app/app_base/app_base.h"
-#include "../Source/app/app_evenbus/app_eventbus.h"
 #include "../Source/bsp/bsp_usart/bsp_usart.h"
+#include "../Source/app/app_evenbus/app_eventbus.h"
+#include "../Source/app/app_protocol/app_protocol.h"
 #include "systick.h"
 #include <stdbool.h>
 #include <string.h>
@@ -30,9 +31,13 @@ static panel_src_info_t my_panel_status;         //  面板上报数据
 static extend_status_t my_extend_status_t;
 
 static uint8_t panel_count;
+
 void app_public_protocol_init(void)
 {
+    app_protocol_init(); // 初始化串口
+
     app_public_cfg_init();
+
     panel_count = app_public_get_panel_count();
     app_eventbus_subscribe(app_public_event_handler);
 }

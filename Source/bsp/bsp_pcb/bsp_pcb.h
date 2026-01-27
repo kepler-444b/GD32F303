@@ -14,4 +14,7 @@ void bsp_usart1_init(void);
 void bsp_usart2_init(void);
 void bsp_usart4_init(void);
 
+void bsp_buzzer_init(void);
+void bsp_led_init(void);
+
 #endif

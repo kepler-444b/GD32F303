@@ -392,7 +392,7 @@ usb_desc_header *usbh_nextdesc_get(uint8_t *pbuf, uint16_t *ptr)
 
 /*!
     \brief      get the next descriptor header
-    \param[in]  udev: pointer to device property
+    \param[in]  udev: pointer to device property_set
     \param[in]  interface: interface number
     \param[out] none
     \retval     operation status
@@ -412,7 +412,7 @@ usbh_status usbh_interface_select(usb_dev_prop *udev, uint8_t interface)
 
 /*!
     \brief      find the interface index for a specific class
-    \param[in]  udev: pointer to device property
+    \param[in]  udev: pointer to device property_set
     \param[in]  main_class: class code
     \param[in]  sub_class: subclass code
     \param[in]  protocol: protocol code
@@ -445,7 +445,7 @@ uint8_t usbh_interface_find(usb_dev_prop *udev, uint8_t main_class, uint8_t sub_
 
 /*!
     \brief      find the interface index for a specific class interface and alternate setting number
-    \param[in]  udev: pointer to device property
+    \param[in]  udev: pointer to device property_set
     \param[in]  interface_number: interface number
     \param[in]  alt_settings: alternate setting number
     \param[out] none
@@ -535,7 +535,7 @@ static void usbh_cfgdesc_parse(usb_desc_config *cfg_desc, uint8_t *buf)
 
 /*!
     \brief      parse the configuration descriptor set
-    \param[in]  udev:  pointer to device property
+    \param[in]  udev:  pointer to device property_set
     \param[in]  buf: pointer to the source descriptor buffer
     \param[out] none
     \retval     none

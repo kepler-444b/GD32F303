@@ -17,4 +17,7 @@ uint16_t app_string_to_bytes(const char *str, uint8_t *buf, uint16_t buf_len);
 uint8_t app_panel_frame_crc(uint8_t *rxbuf, uint8_t len);
 uint8_t app_panel_frame_sum(uint8_t *rxbuf, uint8_t len);
 
+void app_base64_encode(const uint8_t *src, int len, char *dst); // base64 编码函数
+int app_base64_decode(const char *src, uint8_t *dst);           // base64 解码函数
+
 #endif

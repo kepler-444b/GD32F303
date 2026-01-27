@@ -51,23 +51,23 @@ OF SUCH DAMAGE.
 #define CAN_ERR(canx)                      REG32((canx) + 0x00000018U)        /*!< CAN error register */
 #define CAN_BT(canx)                       REG32((canx) + 0x0000001CU)        /*!< CAN bit timing register */
 #define CAN_TMI0(canx)                     REG32((canx) + 0x00000180U)        /*!< CAN transmit mailbox0 identifier register */
-#define CAN_TMP0(canx)                     REG32((canx) + 0x00000184U)        /*!< CAN transmit mailbox0 property register */
+#define CAN_TMP0(canx)                     REG32((canx) + 0x00000184U)        /*!< CAN transmit mailbox0 property_set register */
 #define CAN_TMDATA00(canx)                 REG32((canx) + 0x00000188U)        /*!< CAN transmit mailbox0 data0 register */
 #define CAN_TMDATA10(canx)                 REG32((canx) + 0x0000018CU)        /*!< CAN transmit mailbox0 data1 register */
 #define CAN_TMI1(canx)                     REG32((canx) + 0x00000190U)        /*!< CAN transmit mailbox1 identifier register */
-#define CAN_TMP1(canx)                     REG32((canx) + 0x00000194U)        /*!< CAN transmit mailbox1 property register */
+#define CAN_TMP1(canx)                     REG32((canx) + 0x00000194U)        /*!< CAN transmit mailbox1 property_set register */
 #define CAN_TMDATA01(canx)                 REG32((canx) + 0x00000198U)        /*!< CAN transmit mailbox1 data0 register */
 #define CAN_TMDATA11(canx)                 REG32((canx) + 0x0000019CU)        /*!< CAN transmit mailbox1 data1 register */
 #define CAN_TMI2(canx)                     REG32((canx) + 0x000001A0U)        /*!< CAN transmit mailbox2 identifier register */
-#define CAN_TMP2(canx)                     REG32((canx) + 0x000001A4U)        /*!< CAN transmit mailbox2 property register */
+#define CAN_TMP2(canx)                     REG32((canx) + 0x000001A4U)        /*!< CAN transmit mailbox2 property_set register */
 #define CAN_TMDATA02(canx)                 REG32((canx) + 0x000001A8U)        /*!< CAN transmit mailbox2 data0 register */
 #define CAN_TMDATA12(canx)                 REG32((canx) + 0x000001ACU)        /*!< CAN transmit mailbox2 data1 register */
 #define CAN_RFIFOMI0(canx)                 REG32((canx) + 0x000001B0U)        /*!< CAN receive FIFO0 mailbox identifier register */
-#define CAN_RFIFOMP0(canx)                 REG32((canx) + 0x000001B4U)        /*!< CAN receive FIFO0 mailbox property register */
+#define CAN_RFIFOMP0(canx)                 REG32((canx) + 0x000001B4U)        /*!< CAN receive FIFO0 mailbox property_set register */
 #define CAN_RFIFOMDATA00(canx)             REG32((canx) + 0x000001B8U)        /*!< CAN receive FIFO0 mailbox data0 register */
 #define CAN_RFIFOMDATA10(canx)             REG32((canx) + 0x000001BCU)        /*!< CAN receive FIFO0 mailbox data1 register */
 #define CAN_RFIFOMI1(canx)                 REG32((canx) + 0x000001C0U)        /*!< CAN receive FIFO1 mailbox identifier register */
-#define CAN_RFIFOMP1(canx)                 REG32((canx) + 0x000001C4U)        /*!< CAN receive FIFO1 mailbox property register */
+#define CAN_RFIFOMP1(canx)                 REG32((canx) + 0x000001C4U)        /*!< CAN receive FIFO1 mailbox property_set register */
 #define CAN_RFIFOMDATA01(canx)             REG32((canx) + 0x000001C8U)        /*!< CAN receive FIFO1 mailbox data0 register */
 #define CAN_RFIFOMDATA11(canx)             REG32((canx) + 0x000001CCU)        /*!< CAN receive FIFO1 mailbox data1 register */
 #define CAN_FCTL(canx)                     REG32((canx) + 0x00000200U)        /*!< CAN filter control register */
@@ -134,7 +134,7 @@ OF SUCH DAMAGE.
 
 /* CAN transmit mailbox bank */
 #define CAN_TMI(canx, bank)                REG32((canx) + 0x180U + ((bank) * 0x10U))        /*!< CAN transmit mailbox identifier register */
-#define CAN_TMP(canx, bank)                REG32((canx) + 0x184U + ((bank) * 0x10U))        /*!< CAN transmit mailbox property register */
+#define CAN_TMP(canx, bank)                REG32((canx) + 0x184U + ((bank) * 0x10U))        /*!< CAN transmit mailbox property_set register */
 #define CAN_TMDATA0(canx, bank)            REG32((canx) + 0x188U + ((bank) * 0x10U))        /*!< CAN transmit mailbox data0 register */
 #define CAN_TMDATA1(canx, bank)            REG32((canx) + 0x18CU + ((bank) * 0x10U))        /*!< CAN transmit mailbox data1 register */
 
@@ -144,7 +144,7 @@ OF SUCH DAMAGE.
 
 /* CAN receive FIFO mailbox bank */
 #define CAN_RFIFOMI(canx, bank)            REG32((canx) + 0x1B0U + ((bank) * 0x10U))        /*!< CAN receive FIFO mailbox identifier register */
-#define CAN_RFIFOMP(canx, bank)            REG32((canx) + 0x1B4U + ((bank) * 0x10U))        /*!< CAN receive FIFO mailbox property register */
+#define CAN_RFIFOMP(canx, bank)            REG32((canx) + 0x1B4U + ((bank) * 0x10U))        /*!< CAN receive FIFO mailbox property_set register */
 #define CAN_RFIFOMDATA0(canx, bank)        REG32((canx) + 0x1B8U + ((bank) * 0x10U))        /*!< CAN receive FIFO mailbox data0 register */
 #define CAN_RFIFOMDATA1(canx, bank)        REG32((canx) + 0x1BCU + ((bank) * 0x10U))        /*!< CAN receive FIFO mailbox data1 register */
 

@@ -13,9 +13,10 @@
 #include "wiz_platform.h"
 
 #define SYSTEM_CLOCK_FREQ 120000000 ///< 系统时钟频率
-#define TIMER_PERIOD 999            ///< 定时器周期(1ms中断)
+#define TIMER_PERIOD      999       ///< 定时器周期(1ms中断)
 
 // W5500 所需定时器
+
 void wiz_timer_init(void)
 {
     timer_parameter_struct timer_initpara;
@@ -23,11 +24,11 @@ void wiz_timer_init(void)
     rcu_periph_clock_enable(RCU_TIMER2);
     timer_deinit(TIMER2);
 
-    timer_initpara.prescaler = (SYSTEM_CLOCK_FREQ / 1000000) - 1; // 120 MHz / 120 = 1 MHz
-    timer_initpara.alignedmode = TIMER_COUNTER_EDGE;
-    timer_initpara.counterdirection = TIMER_COUNTER_UP;
-    timer_initpara.period = TIMER_PERIOD; // 1 MHz / 1000 = 1ms
-    timer_initpara.clockdivision = TIMER_CKDIV_DIV1;
+    timer_initpara.prescaler         = (SYSTEM_CLOCK_FREQ / 1000000) - 1; // 120 MHz / 120 = 1 MHz
+    timer_initpara.alignedmode       = TIMER_COUNTER_EDGE;
+    timer_initpara.counterdirection  = TIMER_COUNTER_UP;
+    timer_initpara.period            = TIMER_PERIOD; // 1 MHz / 1000 = 1ms
+    timer_initpara.clockdivision     = TIMER_CKDIV_DIV1;
     timer_initpara.repetitioncounter = 0;
     timer_init(TIMER2, &timer_initpara);
 
@@ -48,13 +49,13 @@ void wiz_spi_init(void)
     spi_parameter_struct spi_initstructure;
     spi_struct_para_init(&spi_initstructure); // 默认初始化
 
-    spi_initstructure.device_mode = SPI_MASTER;
-    spi_initstructure.trans_mode = SPI_TRANSMODE_FULLDUPLEX;
-    spi_initstructure.frame_size = SPI_FRAMESIZE_8BIT;
-    spi_initstructure.nss = SPI_NSS_SOFT;
-    spi_initstructure.endian = SPI_ENDIAN_MSB;
+    spi_initstructure.device_mode          = SPI_MASTER;
+    spi_initstructure.trans_mode           = SPI_TRANSMODE_FULLDUPLEX;
+    spi_initstructure.frame_size           = SPI_FRAMESIZE_8BIT;
+    spi_initstructure.nss                  = SPI_NSS_SOFT;
+    spi_initstructure.endian               = SPI_ENDIAN_MSB;
     spi_initstructure.clock_polarity_phase = SPI_CK_PL_LOW_PH_1EDGE; // CPOL=0, CPHA=0
-    spi_initstructure.prescale = SPI_PSC_8;
+    spi_initstructure.prescale             = SPI_PSC_8;
 
     spi_init(SPI1, &spi_initstructure);
     spi_enable(SPI1);
@@ -107,11 +108,9 @@ void wizchip_deselect(void)
  */
 void wizchip_write_byte(uint8_t dat)
 {
-    while (spi_i2s_flag_get(SPI1, SPI_FLAG_TBE) == RESET)
-        ;
+    while (spi_i2s_flag_get(SPI1, SPI_FLAG_TBE) == RESET);
     SPI_DATA(SPI1) = dat;
-    while (spi_i2s_flag_get(SPI1, SPI_FLAG_RBNE) == RESET)
-        ;
+    while (spi_i2s_flag_get(SPI1, SPI_FLAG_RBNE) == RESET);
     SPI_DATA(SPI1);
 }
 
@@ -122,11 +121,9 @@ void wizchip_write_byte(uint8_t dat)
  */
 uint8_t wizchip_read_byte(void)
 {
-    while (spi_i2s_flag_get(SPI1, SPI_FLAG_TBE) == RESET)
-        ;
+    while (spi_i2s_flag_get(SPI1, SPI_FLAG_TBE) == RESET);
     SPI_DATA(SPI1) = 0xFF;
-    while (spi_i2s_flag_get(SPI1, SPI_FLAG_RBNE) == RESET)
-        ;
+    while (spi_i2s_flag_get(SPI1, SPI_FLAG_RBNE) == RESET);
     return (uint8_t)SPI_DATA(SPI1);
 }
 

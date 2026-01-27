@@ -73,6 +73,7 @@ extern void TimerCountdownMS(Timer *, unsigned int);
 extern void TimerCountdown(Timer *, unsigned int);
 extern int TimerLeftMS(Timer *);
 
+// MQTT 客户端消息结构体
 typedef struct MQTTMessage {
     enum QoS qos;
     unsigned char retained;
@@ -89,6 +90,7 @@ typedef struct MessageData {
 
 typedef void (*messageHandler)(MessageData *);
 
+// MQTT 客户端上下文结构体
 typedef struct MQTTClient {
     unsigned int next_packetid,
         command_timeout_ms;

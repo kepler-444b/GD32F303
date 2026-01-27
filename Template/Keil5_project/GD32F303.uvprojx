@@ -781,6 +781,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\Source\app\app_network_model\app_network_model.h</FilePath>
             </File>
+            <File>
+              <FileName>app_md5.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_md5\app_md5.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_md5.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_md5\app_md5.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>

@@ -1443,13 +1443,13 @@ static void eap_request(ppp_pcb *pcb, u_char *inp, int id, int len) {
 			eap_send_nak(pcb, id, EAPT_SRP);
 			break;
 		}
-		lwip_md5_init(&mdContext);
+		lwip_app_md5_init(&mdContext);
 		lwip_md5_starts(&mdContext);
 		typenum = id;
-		lwip_md5_update(&mdContext, &typenum, 1);
-		lwip_md5_update(&mdContext, (u_char *)secret, secret_len);
+		lwip_app_md5_update(&mdContext, &typenum, 1);
+		lwip_app_md5_update(&mdContext, (u_char *)secret, secret_len);
 		BZERO(secret, sizeof (secret));
-		lwip_md5_update(&mdContext, inp, vallen);
+		lwip_app_md5_update(&mdContext, inp, vallen);
 		lwip_md5_finish(&mdContext, hash);
 		lwip_md5_free(&mdContext);
 		eap_chap_response(pcb, id, hash, pcb->eap.es_client.ea_name,
@@ -1871,12 +1871,12 @@ static void eap_response(ppp_pcb *pcb, u_char *inp, int id, int len) {
 			eap_send_failure(pcb);
 			break;
 		}
-		lwip_md5_init(&mdContext);
+		lwip_app_md5_init(&mdContext);
 		lwip_md5_starts(&mdContext);
-		lwip_md5_update(&mdContext, &pcb->eap.es_server.ea_id, 1);
-		lwip_md5_update(&mdContext, (u_char *)secret, secret_len);
+		lwip_app_md5_update(&mdContext, &pcb->eap.es_server.ea_id, 1);
+		lwip_app_md5_update(&mdContext, (u_char *)secret, secret_len);
 		BZERO(secret, sizeof (secret));
-		lwip_md5_update(&mdContext, pcb->eap.es_challenge, pcb->eap.es_challen);
+		lwip_app_md5_update(&mdContext, pcb->eap.es_challenge, pcb->eap.es_challen);
 		lwip_md5_finish(&mdContext, hash);
 		lwip_md5_free(&mdContext);
 		if (BCMP(hash, inp, MD5_SIGNATURE_SIZE) != 0) {

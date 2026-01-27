@@ -26,6 +26,7 @@ void app_public_cfg_init(void)
     memset(my_panel_info, 0xFF, sizeof(my_panel_info));
     memset(my_bind_info, 0xFF, sizeof(my_bind_info));
     panel_count = 0;
+
     app_load_panel_cfg();
     app_load_bind_info();
 }

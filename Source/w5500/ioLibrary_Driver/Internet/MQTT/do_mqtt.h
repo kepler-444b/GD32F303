@@ -21,10 +21,10 @@ typedef struct MQTTCONNECTION {
     char clientid[1024];    /*client ID*/
     char username[1024];    /*user name*/
     char passwd[1024];      /*user passwords*/
-    char pubtopic[255];     /*publication*/
-    char pubtopic_reply[255];
-    char subtopic[255]; /*subscription*/
-    char subtopic_reply[255];
+    char property_post[255];     /*publication*/
+    char property_post_reply[255];
+    char property_set[255]; /*subscription*/
+    char property_set_reply[255];
     enum QoS pubQoS;     /* publishing messages*/
     enum QoS subQoS;     /* subscription messages*/
     char willtopic[255]; /*Will topic  */

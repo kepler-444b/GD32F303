@@ -248,7 +248,7 @@ snmpv3_password_to_key_md5(
   u8_t i;
   u32_t count = 0;
 
-  mbedtls_md5_init(&MD); /* initialize MD5 */
+  mbedtls_app_md5_init(&MD); /* initialize MD5 */
   mbedtls_md5_starts(&MD);
 
   /**********************************************/
@@ -263,7 +263,7 @@ snmpv3_password_to_key_md5(
       /*************************************************/
       *cp++ = password[password_index++ % passwordlen];
     }
-    mbedtls_md5_update(&MD, password_buf, 64);
+    mbedtls_app_md5_update(&MD, password_buf, 64);
     count += 64;
   }
   mbedtls_md5_finish(&MD, key); /* tell MD5 we're done */
@@ -279,7 +279,7 @@ snmpv3_password_to_key_md5(
   SMEMCPY(password_buf + 16 + engineLength, key, 16);
 
   mbedtls_md5_starts(&MD);
-  mbedtls_md5_update(&MD, password_buf, 32 + engineLength);
+  mbedtls_app_md5_update(&MD, password_buf, 32 + engineLength);
   mbedtls_md5_finish(&MD, key);
 
   mbedtls_md5_free(&MD);

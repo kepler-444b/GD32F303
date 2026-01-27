@@ -34,3 +34,19 @@ void bsp_usart1_init(void)
     gpio_init(GPIOA, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_2);       // USART0 TX
     gpio_init(GPIOA, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_3); // USART0 RX
 }
+
+void bsp_buzzer_init(void)
+{
+    rcu_periph_clock_enable(RCU_GPIOD);
+    gpio_init(GPIOD, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_9); // buzzer(蜂鸣器)
+}
+
+void bsp_led_init(void)
+{
+    rcu_periph_clock_enable(RCU_GPIOD);
+    gpio_init(GPIOD, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_10); // led
+}
+
+void bsp_adc_init(void)
+{
+}

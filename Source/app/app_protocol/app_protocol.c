@@ -10,6 +10,7 @@ void app_protocol_init(void)
     bsp_usart_init(USART2, 9600);
     bsp_usart_init(UART4, 9600);
     bsp_usart_init(USART1, 115200);
+
     bsp_usart2_rx_callback(app_protocol_check); // 注册usart接收回调函数
 }
 

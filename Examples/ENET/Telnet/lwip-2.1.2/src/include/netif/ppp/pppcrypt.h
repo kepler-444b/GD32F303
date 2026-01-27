@@ -63,9 +63,9 @@ extern "C" {
 
 #include "netif/ppp/polarssl/md5.h"
 #define lwip_md5_context md5_context
-#define lwip_md5_init(context)
+#define lwip_app_md5_init(context)
 #define lwip_md5_starts md5_starts
-#define lwip_md5_update md5_update
+#define lwip_app_md5_update app_md5_update
 #define lwip_md5_finish md5_finish
 #define lwip_md5_free(context)
 
@@ -106,9 +106,9 @@ extern "C" {
 #define lwip_md4_free mbedtls_md4_free
 
 #define lwip_md5_context mbedtls_md5_context
-#define lwip_md5_init mbedtls_md5_init
+#define lwip_app_md5_init mbedtls_app_md5_init
 #define lwip_md5_starts mbedtls_md5_starts
-#define lwip_md5_update mbedtls_md5_update
+#define lwip_app_md5_update mbedtls_app_md5_update
 #define lwip_md5_finish mbedtls_md5_finish
 #define lwip_md5_free mbedtls_md5_free
 

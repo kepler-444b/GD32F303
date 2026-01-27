@@ -22,7 +22,7 @@
 #define S43 15
 #define S44 21
 
-static void MD5_Transform(uint32_t state[4], const uint8_t block[64]);
+static void app_md5_transform(uint32_t state[4], const uint8_t block[64]);
 
 static const uint8_t PADDING[64] = {
     0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -60,7 +60,7 @@ static const uint8_t PADDING[64] = {
         (a) += (b);                                     \
     }
 
-void MD5_Init(MD5_CTX *ctx)
+void app_md5_init(MD5_CTX *ctx)
 {
     ctx->count[0] = ctx->count[1] = 0;
 
@@ -70,7 +70,7 @@ void MD5_Init(MD5_CTX *ctx)
     ctx->state[3] = 0x10325476;
 }
 
-void MD5_Update(MD5_CTX *ctx, const uint8_t *input, uint32_t inputLen)
+void app_md5_update(MD5_CTX *ctx, const uint8_t *input, uint32_t inputLen)
 {
     uint32_t i, index, partLen;
     index = (uint32_t)((ctx->count[0] >> 3) & 0x3F);
@@ -79,15 +79,15 @@ void MD5_Update(MD5_CTX *ctx, const uint8_t *input, uint32_t inputLen)
     partLen = 64 - index;
     if (inputLen >= partLen) {
         memcpy(&ctx->buffer[index], input, partLen);
-        MD5_Transform(ctx->state, ctx->buffer);
-        for (i = partLen; i + 63 < inputLen; i += 64) MD5_Transform(ctx->state, &input[i]);
+        app_md5_transform(ctx->state, ctx->buffer);
+        for (i = partLen; i + 63 < inputLen; i += 64) app_md5_transform(ctx->state, &input[i]);
         index = 0;
     } else
         i = 0;
     memcpy(&ctx->buffer[index], &input[i], inputLen - i);
 }
 
-void MD5_Final(uint8_t digest[16], MD5_CTX *ctx)
+void app_md5_final(uint8_t digest[16], MD5_CTX *ctx)
 {
     uint8_t bits[8];
     uint32_t index, padLen;
@@ -110,9 +110,9 @@ void MD5_Final(uint8_t digest[16], MD5_CTX *ctx)
     padLen = (index < 56) ? (56 - index) : (120 - index);
 
     // 填充 0x80 和 0
-    MD5_Update(ctx, PADDING, padLen);
+    app_md5_update(ctx, PADDING, padLen);
     // 填充长度信息（这是最关键的 8 字节）
-    MD5_Update(ctx, bits, 8);
+    app_md5_update(ctx, bits, 8);
 
     // 输出最终状态
     for (int i = 0, j = 0; i < 4; i++, j += 4) {
@@ -123,7 +123,7 @@ void MD5_Final(uint8_t digest[16], MD5_CTX *ctx)
     }
 }
 
-static void MD5_Transform(uint32_t state[4], const uint8_t block[64])
+static void app_md5_transform(uint32_t state[4], const uint8_t block[64])
 {
     uint32_t a = state[0], b = state[1], c = state[2], d = state[3], x[16];
 
@@ -212,17 +212,17 @@ static void MD5_Transform(uint32_t state[4], const uint8_t block[64])
     state[2] += c;
     state[3] += d;
 }
-#define SECTOR_SIZE 2048 // 每次读取 2048 字节
 
-int Calculate_File_MD5(uint32_t flash_start_addr, uint32_t file_length, uint8_t out_md5[16])
+int app_md5_calculate_file(uint32_t flash_start_addr, uint32_t file_length, char out_md5_str[64])
 {
+#if 0
     MD5_CTX md5_ctx;
     uint32_t sector_buf[FLASH_PAGE_SIZE / 4];
     uint32_t total_processed = 0;
     uint32_t bytes_remaining = file_length;
     uint32_t current_addr    = flash_start_addr;
 
-    MD5_Init(&md5_ctx);
+    app_md5_init(&md5_ctx);
 
     while (bytes_remaining > 0) {
         uint32_t read_len         = (bytes_remaining >= FLASH_PAGE_SIZE) ? FLASH_PAGE_SIZE : bytes_remaining;
@@ -234,41 +234,47 @@ int Calculate_File_MD5(uint32_t flash_start_addr, uint32_t file_length, uint8_t 
             return -1;
         }
 
-        MD5_Update(&md5_ctx, (const uint8_t *)sector_buf, read_len);
+        app_md5_update(&md5_ctx, (const uint8_t *)sector_buf, read_len);
 
         total_processed += read_len;
         bytes_remaining -= read_len;
         current_addr += read_len;
     }
 
-    MD5_Final(out_md5, &md5_ctx);
+    app_md5_final(out_md5, &md5_ctx);
+    return 0;
+#endif
+    MD5_CTX md5_ctx;
+    uint32_t sector_buf[FLASH_PAGE_SIZE / 4];
+    uint32_t bytes_remaining = file_length;
+    uint32_t current_addr    = flash_start_addr;
+    uint8_t md5_bin[16];
 
-    printf("Processed: %u bytes (expected %u)\n", total_processed, file_length);
-    printf("MD5: ");
-    for (int i = 0; i < 16; i++) printf("%02x", out_md5[i]);
-    printf("\n");
+    app_md5_init(&md5_ctx);
+
+    while (bytes_remaining > 0) {
+        uint32_t read_len         = (bytes_remaining >= FLASH_PAGE_SIZE) ? FLASH_PAGE_SIZE : bytes_remaining;
+        uint32_t aligned_read_len = (read_len + 3) & ~3;
+
+        memset(sector_buf, 0, sizeof(sector_buf));
+        if (app_flash_read_word(current_addr, sector_buf, aligned_read_len) != FMC_READY) {
+            printf("\nFlash Read Error at 0x%08X\n", current_addr);
+            return -1;
+        }
+
+        app_md5_update(&md5_ctx, (const uint8_t *)sector_buf, read_len);
+
+        bytes_remaining -= read_len;
+        current_addr += read_len;
+    }
+
+    app_md5_final(md5_bin, &md5_ctx);
+
+    // 转成32字符十六进制字符串
+    for (int i = 0; i < 16; i++) {
+        sprintf(&out_md5_str[i * 2], "%02x", md5_bin[i]);
+    }
+    out_md5_str[32] = '\0';
 
     return 0;
-}
-
-void MD5_Test(void)
-{
-    uint8_t res[16];
-    // 我们手动模拟 Calculate_File_MD5 的行为
-    uint32_t file_length = 6;
-    char *test_str       = "123456";
-
-    // 直接调用 Calculate_File_MD5 的核心逻辑
-    // 假设我们直接把 RAM 数据喂进去
-    MD5_CTX md5_ctx;
-    MD5_Init(&md5_ctx);
-
-    // 这里模拟了循环中的 MD5_Update
-    MD5_Update(&md5_ctx, (uint8_t *)test_str, file_length);
-
-    MD5_Final(res, &md5_ctx);
-
-    printf("\nExpected: e10adc3949ba59abbe56e057f20f883e\n");
-    printf("Test MD5: ");
-    for (int i = 0; i < 16; i++) printf("%02x", res[i]);
 }

@@ -92,6 +92,8 @@ virtualFolder:
         - path: ../../Source/app/app_network_model/app_network_info.h
         - path: ../../Source/app/app_md5/app_md5.c
         - path: ../../Source/app/app_md5/app_md5.h
+        - path: ../../Source/app/app_token/app_token.c
+        - path: ../../Source/app/app_token/app_token.h
       folders: []
     - name: Bsp
       files:
@@ -156,6 +158,8 @@ virtualFolder:
         - path: ../../Source/dev/dev_manager.h
         - path: ../../Source/dev/dev_public_host.c
         - path: ../../Source/dev/dev_public_host.h
+        - path: ../../Source/dev/dev_info.c
+        - path: ../../Source/dev/dev_info.h
       folders: []
     - name: ::CMSIS
       files: []

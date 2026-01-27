@@ -24,10 +24,10 @@ mqttconn mqtt_params = {
     .username = "0GNFSdkNeZ",                                                                                                                  /*Define the user name*/
     .passwd   = "version=2018-10-31&res=products%2F0GNFSdkNeZ%2Fdevices%2Flight_1&et=1924992000&method=md5&sign=TS9AJ8IVVrwGZ4S7u4Kk0w%3D%3D", /*Define user passwords*/
 
-    .pubtopic       = "$sys/0GNFSdkNeZ/light_1/thing/property/post", /*Define the publication message*/
-    .pubtopic_reply = "$sys/0GNFSdkNeZ/light_1/thing/property/post/reply",
-    .subtopic       = "$sys/0GNFSdkNeZ/light_1/thing/property/set", /*Define subscription messages*/
-    .subtopic_reply = "$sys/0GNFSdkNeZ/light_1/thing/property/set_reply",
+    .property_post       = "$sys/0GNFSdkNeZ/light_1/thing/property_set/post", /*Define the publication message*/
+    .property_post_reply = "$sys/0GNFSdkNeZ/light_1/thing/property_set/post/reply",
+    .property_set       = "$sys/0GNFSdkNeZ/light_1/thing/property_set/set", /*Define subscription messages*/
+    .property_set_reply = "$sys/0GNFSdkNeZ/light_1/thing/property_set/property_set_reply",
 
     .pubQoS    = QOS0,               /*Defines the class of service for publishing messages*/
     .willtopic = "/wizchip/will",    /*Define the topic of the will*/
@@ -223,12 +223,12 @@ static void app_parse_msg(const char *msg)
     APP_PRINTF("reply:%s\r\n", replymsg);
     pubmessage.payload    = replymsg;
     pubmessage.payloadlen = strlen(replymsg);
-    ret                   = MQTTPublish(&c, mqtt_params.subtopic_reply, &pubmessage);
+    ret                   = MQTTPublish(&c, mqtt_params.property_set_reply, &pubmessage);
     if (ret != SUCCESSS) {
         connect_status = ERROR_STATUS;
         APP_ERROR("MQTTPublish error!\n");
     } else {
-        APP_PRINTF("publish:%s,%s\r\n\r\n", mqtt_params.subtopic_reply, (char *)pubmessage.payload);
+        APP_PRINTF("publish:%s,%s\r\n\r\n", mqtt_params.property_set_reply, (char *)pubmessage.payload);
     }
     cJSON_Delete(jsondata);
 }
@@ -248,14 +248,14 @@ int connect_to_mqtt(void)
 int subscribe_topic(void)
 {
     int ret;
-    ret = MQTTSubscribe(&c, mqtt_params.subtopic, mqtt_params.subQoS, message_arrived);
+    ret = MQTTSubscribe(&c, mqtt_params.property_set, mqtt_params.subQoS, message_arrived);
     if (ret != SUCCESSS) {
-        APP_ERROR("subtopic error!\n");
+        APP_ERROR("property_set error!\n");
     }
-    ret = MQTTSubscribe(&c, mqtt_params.pubtopic_reply, mqtt_params.subQoS, message_arrived);
+    ret = MQTTSubscribe(&c, mqtt_params.property_post_reply, mqtt_params.subQoS, message_arrived);
 
     if (ret != SUCCESSS) {
-        APP_ERROR("pubtopic_reply error!\n");
+        APP_ERROR("property_post_reply error!\n");
     }
     return ret;
 }
@@ -277,7 +277,7 @@ void message_arrived(MessageData *md)
     sprintf(topicname, "%.*s", (int)md->topicName->lenstring.len, md->topicName->lenstring.data);
     sprintf(msg, "%.*s", (int)md->message->payloadlen, (char *)md->message->payload);
 
-    if (strcmp(topicname, mqtt_params.subtopic) == 0) {
+    if (strcmp(topicname, mqtt_params.property_set) == 0) {
         memset(mqtt_recv_msg, 0, sizeof(mqtt_recv_msg));
         memcpy(mqtt_recv_msg, msg, strlen(msg));
         app_eventbus_publish(EVENT_MQTT_RECV_MSG, &mqtt_recv_msg);

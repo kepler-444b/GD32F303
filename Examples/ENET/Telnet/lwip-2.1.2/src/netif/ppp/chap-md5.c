@@ -73,11 +73,11 @@ static int chap_md5_verify_response(ppp_pcb *pcb, int id, const char *name,
 	response_len = *response++;
 	if (response_len == MD5_HASH_SIZE) {
 		/* Generate hash of ID, secret, challenge */
-		lwip_md5_init(&ctx);
+		lwip_app_md5_init(&ctx);
 		lwip_md5_starts(&ctx);
-		lwip_md5_update(&ctx, &idbyte, 1);
-		lwip_md5_update(&ctx, secret, secret_len);
-		lwip_md5_update(&ctx, challenge, challenge_len);
+		lwip_app_md5_update(&ctx, &idbyte, 1);
+		lwip_app_md5_update(&ctx, secret, secret_len);
+		lwip_app_md5_update(&ctx, challenge, challenge_len);
 		lwip_md5_finish(&ctx, hash);
 		lwip_md5_free(&ctx);
 
@@ -102,11 +102,11 @@ static void chap_md5_make_response(ppp_pcb *pcb, unsigned char *response, int id
 	LWIP_UNUSED_ARG(private_);
 	LWIP_UNUSED_ARG(pcb);
 
-	lwip_md5_init(&ctx);
+	lwip_app_md5_init(&ctx);
 	lwip_md5_starts(&ctx);
-	lwip_md5_update(&ctx, &idbyte, 1);
-	lwip_md5_update(&ctx, (const u_char *)secret, secret_len);
-	lwip_md5_update(&ctx, challenge, challenge_len);
+	lwip_app_md5_update(&ctx, &idbyte, 1);
+	lwip_app_md5_update(&ctx, (const u_char *)secret, secret_len);
+	lwip_app_md5_update(&ctx, challenge, challenge_len);
 	lwip_md5_finish(&ctx, &response[1]);
 	lwip_md5_free(&ctx);
 	response[0] = MD5_HASH_SIZE;

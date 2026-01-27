@@ -147,7 +147,7 @@ typedef struct _usb_desc_cfg_set {
     usb_desc_itf_set  itf_desc_set[USBH_MAX_INTERFACES_NUM][USBH_MAX_ALT_SETTING];   /*!< USB interface descriptor set*/
 } usb_desc_cfg_set;
 
-/* USB device property */
+/* USB device property_set */
 typedef struct {
     uint8_t                   data[USBH_DATA_BUF_MAX_LEN];                           /*!< if DMA is used, the data array must be located in the first position */
     uint8_t                   cur_itf;                                               /*!< USB device current interface */
@@ -210,7 +210,7 @@ typedef struct _usbh_host {
     usb_host_state                      backup_state;                       /*!< backup of previous state machine value */
     usbh_enum_state                     enum_state;                         /*!< enumeration state machine */
     usbh_control                        control;                            /*!< USB host control state machine */
-    usb_dev_prop                        dev_prop;                           /*!< USB device property */
+    usb_dev_prop                        dev_prop;                           /*!< USB device property_set */
 
     usbh_class                          *uclass[USBH_MAX_SUPPORTED_CLASS];  /*!< USB host supported class */
     usbh_class                          *active_class;                      /*!< USB active class */

@@ -8,10 +8,11 @@
 #define FLASH_BOOT_SADDR 0x08000000 // boot 程序起始地址    (16kb)
 #define FLASH_APP_SADDR  0x08004000 // app  程序起始地址    (100kb)
 #define FLASH_OTA_SADDR  0x0801D000 // ota  临时起始地址    (100kb)
+
 #define FLASH_CFG_SADDR  0x08036000 // cfg  配置信息地址    (40kb)
 
-#define FLASH_CFG_1      FLASH_CFG_SADDR
-#define FLASH_CFG_2      FLASH_CFG_1 + FLASH_PAGE_SIZE
+#define FLASH_OTA_INFO   FLASH_CFG_SADDR
+#define FLASH_CFG_2      FLASH_OTA_INFO + FLASH_PAGE_SIZE
 
 // #define FLASH_119PAGE_ADDR 0x08037800UL // 用于存放按键绑定信息
 #define FLASH_120PAGE_ADDR 0x08038000UL
