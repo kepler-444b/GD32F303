@@ -1,0 +1,217 @@
+#include "app_rtc.h"
+#include "gd32f30x.h"
+#include "../Source/bsp/bsp_usart/bsp_usart.h"
+#include "../Source/app/app_evenbus/app_eventbus.h"
+#include "../Source/app/app_public_protocol/app_display_protocol.h"
+#include "../Source/bsp/bsp_pcb/bsp_pcb.h"
+#include "../Source/bsp/bsp_i2c/bsp_i2c.h"
+#include "../Source/app/app_base/app_base.h"
+#include <stdlib.h>
+#include <string.h>
+
+// 宏定义
+#define DEC_TO_BCD(val) (((val) / 10) << 4 | ((val) % 10))
+#define BCD_TO_DEC(val) (((val) >> 4) * 10 + ((val) & 0x0F))
+
+#define RTC_ADDR        (0x32 << 1) // RTC 模块i2c地址 预移位，简化后续调用
+
+#define CTRL_REG        0x1E // 控制寄存器
+#define STATE_REG       0x1D // 状态寄存器
+
+#define SEC_REG         0x10 // 秒寄存器
+#define MIN_REG         0x11 // 分寄存器
+#define HOUR_REG        0x12 // 时寄存器
+#define DAY_REG         0x13 // 天寄存器
+#define MONTH_REG       0x15 // 月寄存器
+#define YEAR_REG        0x16 // 年寄存器
+
+// 函数声明
+static void app_rtc_unix_to_date(uint32_t timestamp, rtc_ex_time_t *t);
+static void app_rtc_date_to_unix(rtc_ex_time_t *t, uint32_t *timestamp);
+
+// 初始化 RTC
+void app_rtc_ex_init(void)
+{
+    APP_PRINTF("[app_rtc_ex_init] ================================\n");
+    bsp_i2c_init(I2C0, RTC_ADDR); // 初始化 i2c 接口
+
+    uint8_t status = 0;
+
+    if (!bsp_i2c_read(I2C0, RTC_ADDR, STATE_REG, &status)) { // 读取状态寄存器
+        APP_ERROR("RTC device not found!");
+        return; // 没有RTC设备,直接返回
+    }
+
+    if (BIT1(status)) {
+        APP_PRINTF("VBF = 1, VDD/VBAT power switching detected\n"); // 检测到电源有过切换
+    }
+    if (BIT0(status)) {
+        APP_PRINTF("VLF = 1,low voltage \n"); // 检测到掉电,时间可能已经不准
+        app_eventbus_publish(EVENT_STANDARD_TIME, NULL);
+    }
+    app_eventbus_publish(EVENT_STANDARD_TIME, NULL);
+    // 清除标志为
+    bsp_i2c_write(I2C0, RTC_ADDR, STATE_REG, (1 << 1));
+    bsp_i2c_write(I2C0, RTC_ADDR, STATE_REG, (1 << 0));
+
+    uint8_t new_status = 0;
+    bsp_i2c_read(I2C0, RTC_ADDR, STATE_REG, &new_status); // 重新读取
+
+    if (BIT1(new_status)) {
+        APP_ERROR("Failed to clear VBF flag\n");
+    }
+    if (BIT0(new_status)) {
+        APP_ERROR("Failed to clear VLF flag\n");
+    }
+
+    uint8_t ctrl = 0;
+    bsp_i2c_read(I2C0, RTC_ADDR, CTRL_REG, &ctrl); // 读取控制寄存器
+
+    if (!BIT2(ctrl)) { // 如果备用电池的充电没有打开
+
+        bsp_i2c_write(I2C0, RTC_ADDR, CTRL_REG, (1 << 2)); // 开启充电
+        APP_PRINTF("Charging enabled\n");
+    } else {
+        APP_PRINTF("Charging already enabled\n");
+    }
+}
+
+void rtc_ex_set_time(rtc_ex_time_t *t)
+{
+    bsp_i2c_write(I2C0, RTC_ADDR, CTRL_REG, 0x80); // 停止RTC
+    bsp_i2c_write(I2C0, RTC_ADDR, SEC_REG, DEC_TO_BCD(t->sec));
+    bsp_i2c_write(I2C0, RTC_ADDR, MIN_REG, DEC_TO_BCD(t->min));
+    bsp_i2c_write(I2C0, RTC_ADDR, HOUR_REG, DEC_TO_BCD(t->hour));
+    bsp_i2c_write(I2C0, RTC_ADDR, DAY_REG, DEC_TO_BCD(t->day));
+    bsp_i2c_write(I2C0, RTC_ADDR, MONTH_REG, DEC_TO_BCD(t->month));
+    bsp_i2c_write(I2C0, RTC_ADDR, YEAR_REG, DEC_TO_BCD((uint8_t)(t->year % 100)));
+
+    bsp_i2c_write(I2C0, RTC_ADDR, CTRL_REG, 0x00); // 启动RTC
+}
+
+void rtc_ex_get_time(rtc_ex_time_t *t)
+{
+    uint8_t sec, min, hour, day, month, year;
+
+    // 读取寄存器
+    bsp_i2c_read(I2C0, RTC_ADDR, SEC_REG, &sec);
+    bsp_i2c_read(I2C0, RTC_ADDR, MIN_REG, &min);
+    bsp_i2c_read(I2C0, RTC_ADDR, HOUR_REG, &hour);
+    bsp_i2c_read(I2C0, RTC_ADDR, DAY_REG, &day);
+    bsp_i2c_read(I2C0, RTC_ADDR, MONTH_REG, &month);
+    bsp_i2c_read(I2C0, RTC_ADDR, YEAR_REG, &year);
+
+    t->sec   = BCD_TO_DEC(sec);
+    t->min   = BCD_TO_DEC(min);
+    t->hour  = BCD_TO_DEC(hour);
+    t->day   = BCD_TO_DEC(day);
+    t->month = BCD_TO_DEC(month);
+    t->year  = BCD_TO_DEC(year) + 2000;
+}
+
+void rtc_test(void)
+{
+    rtc_ex_time_t t;
+    rtc_ex_get_time(&t);
+    APP_PRINTF("RTC TIME:%04d-%02d-%02d %02d:%02d:%02d\r\n", t.year, t.month, t.day, t.hour, t.min, t.sec);
+}
+
+// 获取 nuix 时间
+void rct_get_unix_time(uint32_t *time)
+{
+    rtc_ex_time_t t;
+    rtc_ex_get_time(&t);
+    app_rtc_date_to_unix(&t, time);
+}
+
+// 通过 nuix 设置时间
+void rct_set_unix_time(const uint32_t time)
+{
+    rtc_ex_time_t t;
+    app_rtc_unix_to_date(time, &t);
+    rtc_ex_set_time(&t);
+    APP_PRINTF("rct_set_unix_time: %04d-%02d-%02d %02d:%02d:%02d\r\n", t.year, t.month, t.day, t.hour, t.min, t.sec);
+
+    // 同步到显示屏
+    uint16_t time_arr[6];
+
+    time_arr[0] = t.year % 100;
+    time_arr[1] = t.month;
+    time_arr[2] = t.day;
+    time_arr[3] = t.hour;
+    time_arr[4] = t.min;
+    time_arr[5] = t.sec;
+
+    app_display_set_time(time_arr, sizeof(time_arr) / sizeof(time_arr[0]));
+}
+
+// 将 unix 时间转换为 rtc_ex_time_t 结构体
+static void app_rtc_unix_to_date(uint32_t timestamp, rtc_ex_time_t *t)
+{
+    const uint16_t days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+
+    timestamp += 8 * 3600; // 转换为北京时间
+    uint32_t days = timestamp / 86400;
+    uint32_t secs = timestamp % 86400;
+
+    t->hour = secs / 3600;
+    secs %= 3600;
+    t->min        = secs / 60;
+    t->sec        = secs % 60;
+    uint16_t year = 1970;
+    while (1) {
+        uint16_t days_in_year = ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 366 : 365;
+        if (days >= days_in_year) {
+            days -= days_in_year;
+            year++;
+        } else {
+            break;
+        }
+    }
+    t->year       = year;
+    uint8_t month = 0;
+    while (1) {
+        uint8_t dim = days_in_month[month];
+
+        if (month == 1) {
+            if ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0))
+                dim = 29;
+        }
+        if (days >= dim) {
+            days -= dim;
+            month++;
+        } else {
+            break;
+        }
+    }
+    t->month = month + 1;
+    t->day   = days + 1;
+}
+
+// 将 rtc_ex_time_t 结构体转换为 unix 时间戳
+static void app_rtc_date_to_unix(rtc_ex_time_t *t, uint32_t *timestamp)
+{
+    const uint16_t days_in_month[] = {31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31};
+    uint32_t days                  = 0;
+
+    for (uint16_t year = 1970; year < t->year; year++) {
+        days += ((year % 4 == 0 && year % 100 != 0) || (year % 400 == 0)) ? 366 : 365;
+    }
+
+    for (uint8_t month = 0; month < t->month - 1; month++) {
+        uint8_t dim = days_in_month[month];
+        // 闰年2月
+        if (month == 1 && ((t->year % 4 == 0 && t->year % 100 != 0) || (t->year % 400 == 0))) {
+            dim = 29;
+        }
+        days += dim;
+    }
+
+    days += (t->day - 1);
+
+    uint32_t ts = days * 86400 + t->hour * 3600 + t->min * 60 + t->sec;
+
+    ts -= 8 * 3600;
+
+    *timestamp = ts;
+}

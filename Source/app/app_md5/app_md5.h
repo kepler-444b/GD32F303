@@ -11,5 +11,5 @@ typedef struct {
 void app_md5_init(MD5_CTX *ctx);
 void app_md5_update(MD5_CTX *ctx, const uint8_t *input, uint32_t inputLen);
 void app_md5_final(uint8_t digest[16], MD5_CTX *ctx);
-int app_md5_calculate_file(uint32_t flash_start_addr, uint32_t file_length, char out_md5_str[64]);
+int app_md5_calculate_file(uint32_t flash_start_addr, uint32_t file_length, char out_md5[32]);
 #endif

@@ -62,7 +62,6 @@ void app_timer_init(void)
     timer_interrupt_enable(TIMER6, TIMER_INT_UP);
     timer_enable(TIMER6);
     nvic_irq_enable(TIMER6_IRQn, 0, 1); // 配置NVIC,优先级1
-    APP_PRINTF("app_timer_init\n");
 }
 
 void TIMER6_IRQHandler(void)
@@ -95,6 +94,10 @@ timer_error_e app_timer_start(uint32_t interval_ms, SoftTimerCallback callback, 
     // 检查名称长度
     if (name && strlen(name) >= MAX_TIMER_NAME_LEN) {
         return TIMER_ERR_NAME_TOO_LONG;
+    }
+
+    if (name && name[0] != '\0') { // 如果已存在同名 timer,先 stop
+        app_timer_stop(name);
     }
 
     int id = find_free_timer();

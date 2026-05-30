@@ -29,7 +29,13 @@ void app_eventbus_subscribe(EventHandler handler)
     if (handlerCount >= MAX_EVENT_HANDLERS) {
         return;
     }
-    eventHandlers[handlerCount++] = handler;
+    for (uint8_t i = 0; i < handlerCount; i++) {
+        if (eventHandlers[i] == handler) { // 已经存在,直接返回
+
+            return;
+        }
+    }
+    eventHandlers[handlerCount++] = handler; // 添加新订阅
 }
 
 // 发布事件(带参数)

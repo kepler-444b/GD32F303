@@ -84,7 +84,7 @@ int keep_alive(void);
 static void handle_light_switch(cJSON *item);
 static void hanele_bind_info(cJSON *item);
 
-static dispatch_map_t dispatch_table[] = {
+static dispatch_set_t dispatch_set_table[] = {
     {"LightSwitch", handle_light_switch},
     {"BindInfo", hanele_bind_info},
 };
@@ -209,11 +209,11 @@ static void app_parse_msg(const char *msg)
     id     = cJSON_GetObjectItem(jsondata, "id");
     params = cJSON_GetObjectItem(jsondata, "params");
 
-    for (uint8_t i = 0; i < sizeof(dispatch_table) / sizeof(dispatch_table[0]); i++) {
+    for (uint8_t i = 0; i < sizeof(dispatch_set_table) / sizeof(dispatch_set_table[0]); i++) {
 
-        TAG = cJSON_GetObjectItem(params, dispatch_table[i].key);
+        TAG = cJSON_GetObjectItem(params, dispatch_set_table[i].key);
         if (TAG) {
-            dispatch_table[i].handler(TAG);
+            dispatch_set_table[i].handler(TAG);
         }
     }
 

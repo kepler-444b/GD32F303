@@ -77,6 +77,47 @@ uint16_t app_string_to_bytes(const char *str, uint8_t *buf, uint16_t buf_len)
     return i;
 }
 
+uint16_t app_bytes_to_string(const uint8_t *buf, uint16_t buf_len, char *str)
+{
+    if (!buf || !str || buf_len == 0) {
+        return 0;
+    }
+    static const char hex[] = "0123456789ABCDEF";
+    for (uint16_t i = 0; i < buf_len; i++) {
+        str[i * 2]     = hex[buf[i] >> 4];
+        str[i * 2 + 1] = hex[buf[i] & 0x0F];
+    }
+    str[buf_len * 2] = '\0';
+    return 1;
+}
+
+// 字节转换为二进制字符串
+void app_unpack_bits(const uint8_t *src, int byte_len, char *dst)
+{
+    if (!src || !dst || byte_len <= 0) return;
+
+    int total_bits = byte_len * 8;
+    for (int i = 0; i < total_bits; i++) {
+        dst[i] = ((src[i >> 3] >> (i & 7)) & 0x01) ? '1' : '0';
+    }
+    dst[total_bits] = '\0';
+}
+
+// 二进制字符串转为字节
+void app_pack_bits(const char *src, int bit_len, uint8_t *dst)
+{
+    if (!src || !dst || bit_len <= 0) return;
+
+    int byte_len = (bit_len + 7) / 8;
+    memset(dst, 0, byte_len);
+
+    for (int i = 0; i < bit_len; i++) {
+        if (src[i] == '1') {
+            dst[i >> 3] |= (1 << (i & 7));
+        }
+    }
+}
+
 uint8_t app_panel_frame_crc(uint8_t *rxbuf, uint8_t len)
 {
     uint8_t i, sum = 0;
@@ -91,4 +132,27 @@ uint8_t app_panel_frame_sum(uint8_t *rxbuf, uint8_t len)
     for (uint8_t i = 0; i < len; i++)
         sum += rxbuf[i];
     return sum; // 直接返回累加和
+}
+
+uint16_t app_crc_16(const uint8_t *buf, uint16_t len)
+{
+    uint16_t crc = 0xFFFF;
+    for (uint16_t i = 0; i < len; i++) {
+        crc ^= buf[i];
+        for (uint8_t j = 0; j < 8; j++) {
+            if (crc & 0x0001)
+                crc = (crc >> 1) ^ 0xA001; // 多项式 0x8005 低位先
+            else
+                crc >>= 1;
+        }
+    }
+    return crc;
+}
+
+void app_get_uid(uint8_t uid[12])
+{
+    uint8_t *p = (uint8_t *)DEV_UID;
+    for (uint8_t i = 0; i < 12; i++) {
+        uid[i] = p[i];
+    }
 }

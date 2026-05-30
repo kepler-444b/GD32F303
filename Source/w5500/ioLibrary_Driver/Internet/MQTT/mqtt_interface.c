@@ -118,9 +118,9 @@ int TimerLeftMS(Timer *timer)
  */
 void NewNetwork(Network *n, int sn)
 {
-    n->my_socket = sn;
-    n->mqttread = w5x00_read;
-    n->mqttwrite = w5x00_write;
+    n->my_socket  = sn;
+    n->mqttread   = w5x00_read;
+    n->mqttwrite  = w5x00_write;
     n->disconnect = w5x00_disconnect;
 }
 
@@ -186,4 +186,39 @@ int ConnectNetwork(Network *n, uint8_t *ip, uint16_t port)
         return SOCK_ERROR;
 
     return SOCK_OK;
+}
+
+int8_t ConnectNetwork_nb(Network *n, uint8_t *ip, uint16_t port)
+{
+    static uint8_t state = 0;
+    uint16_t myport      = 12345;
+
+    switch (state) {
+        case 0: // 创建socket
+            if (socket(n->my_socket, Sn_MR_TCP, myport, 0) != n->my_socket) {
+                state = 0;
+                return SOCK_ERROR;
+            }
+            state = 1;
+            return SOCK_BUSY;
+        case 1: // 发起连接
+            if (connect_nb(n->my_socket, ip, port) == SOCK_BUSY) {
+                return SOCK_BUSY;
+            }
+            state = 2;
+            return SOCK_BUSY;
+        case 2: // 等待连接结果
+        {
+            int8_t ret = connect_nb(n->my_socket, ip, port);
+            if (ret == SOCK_OK) {
+                state = 0;
+                return SOCK_OK;
+            } else if (ret == SOCKERR_TIMEOUT || ret == SOCKERR_SOCKCLOSED) {
+                state = 0;
+                return SOCK_ERROR;
+            }
+            return SOCK_BUSY;
+        }
+    }
+    return SOCK_BUSY;
 }

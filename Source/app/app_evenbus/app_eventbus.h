@@ -5,10 +5,29 @@
 typedef enum {
 
     EVENT_MQTT_RECV_MSG,
-    EVENT_USART_RECV_MSG,
+    EVENT_USART2_RECV_MSG,
+    // EVENT_USART0_RECV_MSG,
+    EVENT_USART0_SET, // 上位机配置场景绑定
+    EVENT_USART0_CFG, // 上位机配置设备信息
 
-    MQTT_BIND_CFG_MSG,
-    MQTT_PANEL_CFG_MSG,
+    EVENT_USER_LINK_ON, // 手动联网
+
+    EVENT_PHY_LINK_ON,  // 网线已经插上
+    EVENT_PHY_LINK_OFF, // 网线已经拔出
+
+    EVENT_NETWOR_ON,  // 网络已经连接
+    EVENT_NETWOR_OFF, // 网络已经断开
+
+    EVENT_STANDARD_TIME, // 校准时间
+
+    EVENT_MQTT_CONNECT,
+
+    EVENT_REPORT_TEMP,     // 上报主板温度 
+    EVENT_REPORT_GET_TIME, // 上报获取云端时间
+
+    MQTT_DEL_BIND_CFG,  // 删除绑定信息
+    MQTT_DEL_SCENE_CFG, // 删除场景信息
+
     MQTT_SWITCH_LED_MSG,
 
     // 添加更多事件类型...

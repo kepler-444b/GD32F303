@@ -791,6 +791,56 @@
               <FileType>5</FileType>
               <FilePath>..\..\Source\app\app_md5\app_md5.h</FilePath>
             </File>
+            <File>
+              <FileName>app_token.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_token\app_token.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_token.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_token\app_token.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_watchdog.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_watchdog\app_watchdog.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_watchdog.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_watchdog\app_watchdog.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_display_protocol.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_public_protocol\app_display_protocol.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_display_protocol.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_public_protocol\app_display_protocol.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_public.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_public_protocol\app_public.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_network_info.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_network_model\app_network_info.h</FilePath>
+            </File>
+            <File>
+              <FileName>app_rtc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\app\app_rtc\app_rtc.c</FilePath>
+            </File>
+            <File>
+              <FileName>app_rtc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\app\app_rtc\app_rtc.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -835,6 +885,36 @@
               <FileName>bsp_flash.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\Source\bsp\bsp_flash\bsp_flash.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_adc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\bsp\bsp_adc\bsp_adc.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_adc.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\bsp\bsp_adc\bsp_adc.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_board.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\bsp\bsp_board\bsp_board.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_board.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\bsp\bsp_board\bsp_board.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_i2c.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\bsp\bsp_i2c\bsp_i2c.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_i2c.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\bsp\bsp_i2c\bsp_i2c.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -1050,6 +1130,16 @@
               <FileName>dev_public_host.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\Source\dev\dev_public_host.h</FilePath>
+            </File>
+            <File>
+              <FileName>dev_info.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\Source\dev\dev_info.c</FilePath>
+            </File>
+            <File>
+              <FileName>dev_info.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\Source\dev\dev_info.h</FilePath>
             </File>
           </Files>
         </Group>

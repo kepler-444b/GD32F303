@@ -1,6 +1,6 @@
 /*!
     \file    main.c
-    \brief   RTC calendar 
+    \brief   RTC calendar
 
    \version 2025-7-31, V3.0.2, firmware for GD32F30x
 */
@@ -8,27 +8,27 @@
 /*
     Copyright (c) 2025, GigaDevice Semiconductor Inc.
 
-    Redistribution and use in source and binary forms, with or without modification, 
+    Redistribution and use in source and binary forms, with or without modification,
 are permitted provided that the following conditions are met:
 
-    1. Redistributions of source code must retain the above copyright notice, this 
+    1. Redistributions of source code must retain the above copyright notice, this
        list of conditions and the following disclaimer.
-    2. Redistributions in binary form must reproduce the above copyright notice, 
-       this list of conditions and the following disclaimer in the documentation 
+    2. Redistributions in binary form must reproduce the above copyright notice,
+       this list of conditions and the following disclaimer in the documentation
        and/or other materials provided with the distribution.
-    3. Neither the name of the copyright holder nor the names of its contributors 
-       may be used to endorse or promote products derived from this software without 
+    3. Neither the name of the copyright holder nor the names of its contributors
+       may be used to endorse or promote products derived from this software without
        specific prior written permission.
 
-    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" 
-AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED 
-WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. 
-IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, 
-INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT 
-NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR 
-PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, 
-WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) 
-ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY 
+    THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
 OF SUCH DAMAGE.
 */
 
@@ -59,18 +59,18 @@ int main(void)
 
     /* allow access to BKP domain */
     pmu_backup_write_enable();
-    if(RESET != (RCU_BDCTL & RCU_BDCTL_BKPRST)) {
+    if (RESET != (RCU_BDCTL & RCU_BDCTL_BKPRST)) {
         rcu_bkp_reset_disable();
     }
 
-    printf( "\r\n This is a RTC demo...... \r\n" );
+    printf("\r\n This is a RTC demo...... \r\n");
 
     /* get RTC clock entry selection */
     RTCSRC_FLAG = GET_BITS(RCU_BDCTL, 8, 9);
 
-    if ((0xA5A5 != bkp_read_data(BKP_DATA_0)) || (0x00 == RTCSRC_FLAG)){
+    if ((0xA5A5 != bkp_read_data(BKP_DATA_0)) || (0x00 == RTCSRC_FLAG)) {
         /* backup data register value is not correct or not yet programmed
-        or RTC clock source is not configured (when the first time the program 
+        or RTC clock source is not configured (when the first time the program
         is executed or data in RCU_BDCTL is lost due to Vbat feeding) */
         printf("\r\nThis is a RTC demo!\r\n");
         printf("\r\n\n RTC not yet configured....");
@@ -84,11 +84,11 @@ int main(void)
         time_adjust();
 
         bkp_write_data(BKP_DATA_0, 0xA5A5);
-    }else{
+    } else {
         /* check if the power on reset flag is set */
-        if (rcu_flag_get(RCU_FLAG_PORRST) != RESET){
+        if (rcu_flag_get(RCU_FLAG_PORRST) != RESET) {
             printf("\r\n\n Power On Reset occurred....");
-        }else if (rcu_flag_get(RCU_FLAG_SWRST) != RESET){
+        } else if (rcu_flag_get(RCU_FLAG_SWRST) != RESET) {
             /* check if the pin reset flag is set */
             printf("\r\n\n External Reset occurred....");
         }
@@ -128,7 +128,7 @@ int main(void)
     /* display time in infinite loop */
     time_show();
 
-    while (1){
+    while (1) {
     }
 }
 
@@ -136,7 +136,7 @@ int main(void)
 int fputc(int ch, FILE *f)
 {
     usart_data_transmit(EVAL_COM0, (uint8_t)ch);
-    while(RESET == usart_flag_get(EVAL_COM0, USART_FLAG_TBE));
+    while (RESET == usart_flag_get(EVAL_COM0, USART_FLAG_TBE));
 
     return ch;
 }

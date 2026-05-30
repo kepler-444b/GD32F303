@@ -29,7 +29,7 @@ typedef void (*dispatch_handler_t)(cJSON *item);
 typedef struct {
     const char *key;
     dispatch_handler_t handler;
-} dispatch_map_t;
+} dispatch_set_t;
 
 void app_mqtt_model_init(void);
 

@@ -1,4 +1,5 @@
 
+
 #include "app_http_ota.h"
 #include "systick.h"
 #include <string.h>
@@ -8,8 +9,10 @@
 #include "../Source/app/app_timer/app_timer.h"
 #include "../Source/bsp./bsp_usart/bsp_usart.h"
 #include "../Source/bsp/bsp_flash/bsp_flash.h"
+#include "../Source/bsp/bsp_board/bsp_board.h"
 #include "../Source/app/app_md5/app_md5.h"
 #include "../Source/cjson/cJSON.h"
+#include "../Source/dev/dev_info.h"
 
 // 函数声明
 static uint16_t app_ota_post_version(uint8_t *buf, uint16_t buf_size, const char *s_version, const char *f_version);
@@ -20,51 +23,54 @@ static uint16_t app_ota_post_status(uint8_t *buf, uint16_t buf_size, uint32_t ti
 static bool app_parse_http_data(uint8_t *data, uint16_t len);
 static bool app_parse_http_bin(uint8_t *data, uint16_t len);
 
-static void app_ota_start(void);
 static void timer_do_ota(void *arg);
+static void timer_timeout(void *arg);
 
 // 全局变量
 static uint8_t *http_buf = NULL;
 static uint8_t ota_flag;
 static ota_info_t my_ota_info;
 static httpconn my_httpconn;
-static device_info_t my_dev;
+static dev_save_info_t my_dev;
+static bool is_report = true; // 是否是上报软件版本
 
-bool app_ota_check(httpconn *http_params, device_info_t *dev, uint8_t *shared_buf)
+static uint8_t download_step = 0; // 静态变量,接收固件包步骤
+static uint16_t total_len    = 0; // 静态变量,多次调用累加长度
+
+// 检查更新
+void app_ota_check(httpconn *http_params, dev_save_info_t *dev, uint8_t *shared_buf, bool report)
 {
-    APP_PRINTF("app_ota_check\n");
-
-    http_buf = shared_buf;
+    APP_PRINTF("================= [app_ota_check] =================\n");
+    if (ota_flag != OTA_IDLE) {
+        APP_PRINTF("ota_flag:%d\n", ota_flag);
+        APP_ERROR("ota_flag ids not OTA_IDLE!");
+        return;
+    }
+    is_report = report;
+    http_buf  = shared_buf;
     memcpy(&my_dev, dev, sizeof(my_dev));
     memcpy(&my_httpconn, http_params, sizeof(my_httpconn));
 
-    if (ota_flag != OTA_IDLE) {
-        APP_ERROR("ota_flag is not OTA_IDLE");
-        return false;
-    }
     ota_flag = OTA_REPORT_VER;
-    if (app_timer_start(500, timer_do_ota, true, NULL, "do_ota") == TIMER_ERR_SUCCESS) {
-        return true;
-    }
-    return false;
+    app_timer_start(100, timer_do_ota, true, NULL, "do_ota");
 }
 
 // http 发送
-uint8_t app_http_send_packet(uint8_t sn, uint8_t *buf, uint16_t len, uint8_t *destip, uint16_t destport)
+bool app_http_send_packet(uint8_t sn, uint8_t *buf, uint16_t len, uint8_t *destip, uint16_t destport)
 {
     uint8_t sr = getSn_SR(sn);
     switch (sr) {
         case SOCK_CLOSED:
             socket(sn, Sn_MR_TCP, 50000, 0x00);
-            return 0;
+            return false;
         case SOCK_INIT:
             connect(sn, destip, destport);
-            return 0;
+            return false;
         case SOCK_ESTABLISHED:
             send(sn, buf, len);
-            return 1; // 发送完成
+            return true; // 发送完成
         default:
-            return 0;
+            return false;
     }
 }
 
@@ -94,8 +100,6 @@ bool app_http_recv_bin_packet(uint8_t sn, uint8_t *buf)
 {
     bool ret = false;
 
-    static uint16_t total_len = 0; // 静态变量,多次调用累加长度
-
     uint16_t rsr_len = getSn_RX_RSR(sn);
 
     if (rsr_len > 0) {
@@ -115,6 +119,7 @@ bool app_http_recv_bin_packet(uint8_t sn, uint8_t *buf)
     return ret; // 数据可能还在路上,返回 0 让定时器下次再来看
 }
 
+// 解析收到的固件流的函数
 static bool app_parse_http_bin(uint8_t *data, uint16_t len)
 {
     char *header_end = strstr((char *)data, "\r\n\r\n");
@@ -150,39 +155,94 @@ static bool app_parse_http_bin(uint8_t *data, uint16_t len)
     return false;
 }
 
+// 统一 OTA 核心状态机
 static void timer_do_ota(void *arg)
 {
-    static uint16_t send_len = 0;
-    switch (ota_flag) {
+    static uint16_t send_len         = 0;
+    const dev_save_info_t *temp_info = dev_get_save_device_info();
 
+    switch (ota_flag) {
         case OTA_REPORT_VER: { // 上报固件版本
-            send_len = app_ota_post_version(http_buf, ETHERNET_BUF_SIZE, "V1.1", "V1.0");
+            send_len = app_ota_post_version(http_buf, ETHERNET_BUF_SIZE, temp_info->cur_ver, "V1.1");
             app_http_send_packet(my_httpconn.sn, http_buf, send_len, my_httpconn.server_ip, my_httpconn.port);
-            if (app_http_recv_packet(my_httpconn.sn, http_buf)) {
-                ota_flag = OTA_GET_TASK;
-            }
+            app_http_recv_packet(my_httpconn.sn, http_buf);
         } break;
-        case OTA_GET_TASK: { // 获取升级任务
-            send_len = app_ota_get_update_task(http_buf, ETHERNET_BUF_SIZE, "2", "1.1");
+        case OTA_GET_TASK: { // 获取软件更新
+            send_len = app_ota_get_update_task(http_buf, ETHERNET_BUF_SIZE, "2", temp_info->cur_ver);
             app_http_send_packet(my_httpconn.sn, http_buf, send_len, my_httpconn.server_ip, my_httpconn.port);
-            if (app_http_recv_packet(my_httpconn.sn, http_buf)) {
-                ota_flag = OTA_IDLE;
-            }
+            app_http_recv_packet(my_httpconn.sn, http_buf);
         } break;
+
+        case OTA_DOWNLOADING: {
+            // 校验是否全部下载完成
+            if (my_ota_info.current_packet >= my_ota_info.total_packets) {
+                APP_PRINTF("Download Success! All %d packets saved\n", my_ota_info.total_packets);
+                char cur_file_md5[32];
+                app_md5_calculate_file(FLASH_OTA_SADDR, my_ota_info.size, cur_file_md5);
+
+                if (memcmp(cur_file_md5, my_ota_info.md5, sizeof(cur_file_md5)) == 0) {
+                    APP_PRINTF("MD5 check passed\n");
+                    ota_flag = OTA_REPORT_OK;
+                } else {
+                    APP_PRINTF("MD5 check failed\n");
+                    ota_flag = OTA_REPORT_CHECK_FAIL;
+                }
+                break;
+            }
+
+            // 固件块分片请求与接收子状态机
+            if (download_step == 0) {
+                total_len = 0;
+
+                uint32_t start_byte = my_ota_info.current_packet * OTA_PACKET_SIZE;
+                uint32_t end_byte   = start_byte + OTA_PACKET_SIZE - 1;
+                if (end_byte >= my_ota_info.size) end_byte = my_ota_info.size - 1;
+
+                char range_str[32];
+                snprintf(range_str, sizeof(range_str), "%u-%u", (unsigned int)start_byte, (unsigned int)end_byte);
+                send_len = app_ota_get_bin(http_buf, ETHERNET_BUF_SIZE, my_ota_info.tid, range_str);
+                if (app_http_send_packet(my_httpconn.sn, http_buf, send_len, my_httpconn.server_ip, my_httpconn.port) == 1) {
+                    download_step = 1;
+                }
+            } else if (download_step == 1) {
+                if (app_http_recv_bin_packet(my_httpconn.sn, http_buf)) {
+                    download_step = 0;
+                }
+            }
+
+            break;
+        }
         case OTA_REPORT_OK: { // 上报升级成功
             send_len = app_ota_post_status(http_buf, ETHERNET_BUF_SIZE, my_ota_info.tid, 201);
             app_http_send_packet(my_httpconn.sn, http_buf, send_len, my_httpconn.server_ip, my_httpconn.port);
+
             if (app_http_recv_packet(my_httpconn.sn, http_buf)) {
-                ota_flag = OTA_IDLE;
                 app_timer_stop("do_ota");
+                ota_flag = OTA_IDLE;
+
+                // 更新固件版本
+                dev_save_info_t temp_info = *dev_get_save_device_info();
+                snprintf(temp_info.md5, sizeof(temp_info.md5), "%s", my_ota_info.md5);            // 保存MD5
+                snprintf(temp_info.cur_ver, sizeof(temp_info.cur_ver), "%s", my_ota_info.target); // 保存软件版本
+                temp_info.file_size = my_ota_info.size;
+                temp_info.ota_flag  = OTA_SET_FLAG;
+
+                bool ret = dev_set_save_device_info(&temp_info); // 设置ota标志位
+                if (ret) {
+                    APP_PRINTF("set device info success!\n");
+                    delay_1ms(100);
+                    NVIC_SystemReset(); // 重启系统
+                } else {
+                    APP_PRINTF("set device info error!\n");
+                }
             }
         } break;
         case OTA_REPORT_CHECK_FAIL: { // 上报 MD5 校验失败
             send_len = app_ota_post_status(http_buf, ETHERNET_BUF_SIZE, my_ota_info.tid, 205);
             app_http_send_packet(my_httpconn.sn, http_buf, send_len, my_httpconn.server_ip, my_httpconn.port);
             if (app_http_recv_packet(my_httpconn.sn, http_buf)) {
-                ota_flag = OTA_IDLE;
                 app_timer_stop("do_ota");
+                ota_flag = OTA_IDLE;
             }
         } break;
 
@@ -194,48 +254,11 @@ static void timer_do_ota(void *arg)
     }
 }
 
-static void timer_do_bin(void *arg)
+static void timer_timeout(void *arg)
 {
-    static uint8_t download_step = 0;
-    uint16_t send_len;
-    char range_str[32];
-
-    if (my_ota_info.current_packet >= my_ota_info.total_packets) { // 下载完成
-        APP_PRINTF("Download Success! All %d packets saved\n", my_ota_info.total_packets);
-
-        char cur_file_md5[64];
-        app_md5_calculate_file(FLASH_OTA_SADDR, my_ota_info.size, cur_file_md5);
-
-        if (strcmp(cur_file_md5, my_ota_info.md5) == 0) {
-            ota_flag = OTA_REPORT_OK; // 上报升级成功
-            APP_PRINTF("MD5 check passed\n");
-        } else {
-            ota_flag = OTA_REPORT_CHECK_FAIL; // 上报文件校验失败
-            APP_PRINTF("MD5 check failed\n");
-        }
-        app_timer_stop("do_bin"); // 结束下载任务
-
-        return;
-    }
-
-    if (download_step == 0) { // 发送请求
-        uint32_t start_byte = my_ota_info.current_packet * OTA_BLOCK_SIZE;
-        uint32_t end_byte   = start_byte + OTA_BLOCK_SIZE - 1;
-        if (end_byte >= my_ota_info.size) end_byte = my_ota_info.size - 1;
-
-        snprintf(range_str, sizeof(range_str), "%u-%u", (unsigned int)start_byte, (unsigned int)end_byte);
-        send_len = app_ota_get_bin(http_buf, ETHERNET_BUF_SIZE, my_ota_info.tid, range_str);
-
-        if (app_http_send_packet(my_httpconn.sn, http_buf, send_len, my_httpconn.server_ip, my_httpconn.port) == 1) {
-            download_step = 1; // 切换到等待接收状态
-        }
-    } else if (download_step == 1) { // 等待接收
-        if (app_http_recv_bin_packet(my_httpconn.sn, http_buf)) {
-            download_step = 0; // 准备发送下一包
-        }
-
-        // (可选) 这里可以加一个简单的超时计数，如果 10 秒没收到，强制 download_step = 0 重试
-    }
+    APP_PRINTF("OTA timer_timeout\n");
+    delay_1ms(100);
+    NVIC_SystemReset(); // 重启系统
 }
 
 // 解析普通 http 数据
@@ -257,68 +280,72 @@ static bool app_parse_http_data(uint8_t *data, uint16_t len)
     cJSON *msg    = cJSON_GetObjectItem(root, "msg");
     cJSON *req_id = cJSON_GetObjectItem(root, "request_id");
 
-    APP_PRINTF("%-10s: %d\n", "code", code->valueint);
-    APP_PRINTF("%-10s: %s\n", "msg", msg->valuestring);
-    APP_PRINTF("%-10s: %s\n", "request_id", req_id->valuestring);
-    APP_PRINTF("\n");
+    if (!cJSON_IsNumber(code)) {
+        APP_PRINTF("code invalid\n");
+        cJSON_Delete(root);
+        return false;
+    }
 
-    if (code->valueint != 0) { // 错误码
-        switch (code->valueint) {
-            case not_exist:
-                APP_PRINTF("NOT EXIST\n"); // not exist 任务不存在
-                app_timer_stop("do_ota");
-                break;
-            default:
-                break;
+    if (ota_flag == OTA_REPORT_VER) {
+        if (is_report) {
+            ota_flag = OTA_IDLE;
+            app_timer_stop("do_ota");
+            APP_PRINTF("OTA report ver, no task\n");
+        } else {
+            ota_flag = OTA_GET_TASK;
+            APP_PRINTF("OTA report ver, have task\n");
         }
     }
 
-    cJSON *item_data = cJSON_GetObjectItem(root, "data");
-    if (item_data) { // 有 OTA 任务
+    if (ota_flag == OTA_GET_TASK) { // 接收升级任务
 
-        cJSON *target = cJSON_GetObjectItem(item_data, "target");
-        cJSON *tid    = cJSON_GetObjectItem(item_data, "tid");
-        cJSON *size   = cJSON_GetObjectItem(item_data, "size");
-        cJSON *md5    = cJSON_GetObjectItem(item_data, "md5");
-        cJSON *status = cJSON_GetObjectItem(item_data, "status");
-        cJSON *type   = cJSON_GetObjectItem(item_data, "type");
+        if (code->valueint != 0) {
+            if (code->valueint == not_exist) {
+                APP_PRINTF("NOT EXIST\n"); // not exist 任务不存在
+                ota_flag = OTA_IDLE;
+                app_timer_stop("do_ota");
+            }
+        } else {
+            cJSON *item_data = cJSON_GetObjectItem(root, "data");
 
-        snprintf(my_ota_info.target, sizeof(my_ota_info.target), "%s", target->valuestring);
-        snprintf(my_ota_info.md5, sizeof(my_ota_info.md5), "%s", md5->valuestring);
-        my_ota_info.tid    = (uint32_t)tid->valueint;
-        my_ota_info.size   = (uint32_t)size->valueint;
-        my_ota_info.status = (uint8_t)status->valueint;
-        my_ota_info.type   = (uint8_t)type->valueint;
+            if (item_data) { // 有 OTA 任务
+                cJSON *target = cJSON_GetObjectItem(item_data, "target");
+                cJSON *tid    = cJSON_GetObjectItem(item_data, "tid");
+                cJSON *size   = cJSON_GetObjectItem(item_data, "size");
+                cJSON *md5    = cJSON_GetObjectItem(item_data, "md5");
+                cJSON *status = cJSON_GetObjectItem(item_data, "status");
+                cJSON *type   = cJSON_GetObjectItem(item_data, "type");
 
-        APP_PRINTF("%-10s: %s\r\n", "target", my_ota_info.target);
-        APP_PRINTF("%-10s: %u\r\n", "tid", (unsigned int)my_ota_info.tid);
-        APP_PRINTF("%-10s: %u\r\n", "size", (unsigned int)my_ota_info.size);
-        APP_PRINTF("%-10s: %s\r\n", "md5", my_ota_info.md5);
-        APP_PRINTF("%-10s: %d\r\n", "status", my_ota_info.status);
-        APP_PRINTF("%-10s: %d\r\n", "type", my_ota_info.type);
+                snprintf(my_ota_info.target, sizeof(my_ota_info.target), "%s", target->valuestring);
+                snprintf(my_ota_info.md5, sizeof(my_ota_info.md5), "%s", md5->valuestring);
+                my_ota_info.tid    = (uint32_t)tid->valueint;
+                my_ota_info.size   = (uint32_t)size->valueint;
+                my_ota_info.status = (uint8_t)status->valueint;
+                my_ota_info.type   = (uint8_t)type->valueint;
 
-        my_ota_info.total_packets  = (my_ota_info.size + OTA_BLOCK_SIZE - 1) / OTA_BLOCK_SIZE;
-        my_ota_info.current_packet = 0;
-        app_ota_start(); // 有下载任务,开始下载
-        APP_PRINTF("START DOWNLOAD\n");
+                APP_PRINTF("%-10s: %s\r\n", "target", my_ota_info.target);
+                APP_PRINTF("%-10s: %u\r\n", "tid", (unsigned int)my_ota_info.tid);
+                APP_PRINTF("%-10s: %u\r\n", "size", (unsigned int)my_ota_info.size);
+                APP_PRINTF("%-10s: %s\r\n", "md5", my_ota_info.md5);
+                APP_PRINTF("%-10s: %d\r\n", "status", my_ota_info.status);
+                APP_PRINTF("%-10s: %d\r\n", "type", my_ota_info.type);
+
+                my_ota_info.total_packets  = (my_ota_info.size + OTA_PACKET_SIZE - 1) / OTA_PACKET_SIZE;
+                my_ota_info.current_packet = 0;
+
+                ota_flag = OTA_DOWNLOADING;
+                app_timer_start(60000, timer_timeout, false, NULL, "timeout");
+                bsp_set_buuzzer(3);
+            }
+        }
     }
     cJSON_Delete(root);
     return true;
 }
 
-static void app_ota_start(void)
-{
-    my_ota_info.current_packet = 0;
-    my_ota_info.total_packets  = (my_ota_info.size + OTA_BLOCK_SIZE - 1) / OTA_BLOCK_SIZE;
-
-    APP_PRINTF("Start Download:Total %d packets\n", my_ota_info.total_packets);
-
-    app_timer_start(100, timer_do_bin, true, NULL, "do_bin");
-}
-
 // 上报设备版本号
-// s_version(模组版本号,固定为 V1.1)
-// f_version(mcu固件版本号)
+// f_version(模组版本号,固定为 V1.1)
+// s_version(mcu固件版本号)
 static uint16_t app_ota_post_version(uint8_t *buf, uint16_t buf_size, const char *s_version, const char *f_version)
 {
     int len = snprintf(NULL, 0, "{\"s_version\":\"%s\",\"f_version\":\"%s\"}", s_version, f_version);
@@ -334,6 +361,7 @@ static uint16_t app_ota_post_version(uint8_t *buf, uint16_t buf_size, const char
              "{\"s_version\":\"%s\",\"f_version\":\"%s\"}",
              my_dev.products, my_dev.devices, my_dev.passwd, len, s_version, f_version);
 
+    // APP_PRINTF("report:%s\n", buf);
     return (uint16_t)strlen((char *)buf);
 }
 
@@ -400,3 +428,9 @@ static uint16_t app_ota_post_status(uint8_t *buf, uint16_t buf_size, uint32_t ti
 
     return (uint16_t)strlen((char *)buf);
 }
+
+// uint8_t app_ota_get_flag(void)
+// {
+//     // APP_PRINTF("ota_flag:%d\n", ota_flag);
+//     return ota_flag;
+// }

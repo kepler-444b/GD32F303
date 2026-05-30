@@ -99,8 +99,9 @@ typedef struct MQTTClient {
     unsigned char *buf,
         *readbuf;
     unsigned int keepAliveInterval;
-    char ping_outstanding;
-    int isconnected;
+    char ping_outstanding;       // 已经发送心跳包
+    char heartbeat_timeout_flag; // 心跳发送超时标志位
+    int isconnected;             // 已经连接到服务器
 
     struct MessageHandlers {
         const char *topicFilter;

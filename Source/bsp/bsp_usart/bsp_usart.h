@@ -18,6 +18,17 @@
         }                                                        \
         APP_PRINTF("\n");                                        \
     } while (0)
+
+#define APP_PRINTF_BUF16(name, buf, len)                                           \
+    do {                                                                           \
+        APP_PRINTF("%s: ", (name));                                                \
+        for (size_t _idx = 0; _idx < (len); _idx++) {                              \
+            uint16_t val = ((uint16_t)(buf)[_idx * 2] << 8) | (buf)[_idx * 2 + 1]; \
+            APP_PRINTF("%04X ", val);                                              \
+        }                                                                          \
+        APP_PRINTF("\n");                                                          \
+    } while (0)
+
 #define APP_ERROR(fmt, ...) \
     APP_PRINTF("[#%s#] \"" fmt "\" ERROR!\n", __func__, ##__VA_ARGS__)
 
@@ -28,8 +39,47 @@
 #define APP_ERROR(fmt, ...)
 #endif
 
-#define USART2_RECV_SIZE 256
-#define UART4_RECV_SIZE  128
+/* **************** USART0 相关结构 **************** */
+#define USART0_RECV_SIZE 256
+
+typedef struct {
+    uint8_t buffer[USART0_RECV_SIZE];
+    uint16_t length;
+} usart0_rx_buf_t;
+
+typedef struct {
+
+    uint8_t buffer[USART0_RECV_SIZE];
+    uint16_t length;
+} type_c_rx_t;
+
+typedef struct {
+    const uint8_t *tx_ptr;
+    uint16_t tx_len;
+} usart0_tx_buf_t;
+
+typedef void (*usart_rx0_callback_t)(usart0_rx_buf_t *);
+void bsp_usart0_rx_callback(usart_rx0_callback_t callback);
+
+/* **************** USART1 相关结构 **************** */
+
+#define USART1_RECV_SIZE 128
+
+typedef struct {
+    uint8_t buffer[USART1_RECV_SIZE];
+    uint16_t length;
+} usart1_rx_buf_t;
+
+typedef struct {
+    const uint8_t *tx_ptr;
+    uint16_t tx_len;
+} usart1_tx_buf_t;
+
+typedef void (*usart_rx1_callback_t)(usart1_rx_buf_t *);
+void bsp_usart1_rx_callback(usart_rx1_callback_t callback);
+
+/* **************** USART2 相关结构 **************** */
+#define USART2_RECV_SIZE 128
 
 typedef struct {
     uint8_t buffer[USART2_RECV_SIZE];
@@ -37,20 +87,28 @@ typedef struct {
 } usart2_rx_buf_t;
 
 typedef struct {
-    uint8_t buffer[UART4_RECV_SIZE];
-    uint16_t length;
-} uart4_rx_buf_t;
-
-typedef struct {
     const uint8_t *tx_ptr;
     uint16_t tx_len;
 } usart2_tx_buf_t;
 
 typedef void (*usart_rx2_callback_t)(usart2_rx_buf_t *);
-typedef void (*uart_rx4_callback_t)(uart4_rx_buf_t *);
-
 void bsp_usart2_rx_callback(usart_rx2_callback_t callback);
-void bsp_uart4_rx_callback(uart_rx4_callback_t callback);
+
+/* **************** USART3 相关结构 **************** */
+#define UART3_RECV_SIZE 256
+
+typedef struct {
+    uint8_t buffer[UART3_RECV_SIZE];
+    uint16_t length;
+} usart3_rx_buf_t;
+
+typedef struct {
+    const uint8_t *tx_ptr;
+    uint16_t tx_len;
+} usart3_tx_buf_t;
+
+typedef void (*usart_rx3_callback_t)(usart3_rx_buf_t *);
+void bsp_usart3_rx_callback(usart_rx3_callback_t callback);
 
 void bsp_usart_init(uint32_t usart_com, uint32_t baudrate);
 void bsp_usart_tx_buf(const uint8_t *data, uint16_t length, uint32_t usart_com);

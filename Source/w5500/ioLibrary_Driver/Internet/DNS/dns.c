@@ -482,6 +482,7 @@ void DNS_init(uint8_t s, uint8_t *buf)
 }
 
 /* DNS CLIENT RUN */
+// 阻塞版本
 int8_t DNS_run(uint8_t *dns_ip, uint8_t *name, uint8_t *ip_from_dns)
 {
     int8_t ret;
@@ -536,7 +537,62 @@ int8_t DNS_run(uint8_t *dns_ip, uint8_t *name, uint8_t *ip_from_dns)
     return ret;
 }
 
+// 非阻塞版本
+int8_t DNS_run_nb(uint8_t *dns_ip, uint8_t *name, uint8_t *ip_from_dns)
+{
+    static uint8_t state = 0;
+    static uint16_t len;
+    static struct dhdr dhp;
+    static uint8_t ip[4];
+    static uint16_t port;
+
+    int8_t ret_check_timeout;
+
+    // 第一次进来：初始化 + 发送
+    if (state == 0) {
+        retry_count = 0;
+        dns_1s_tick = 0;
+
+        socket(DNS_SOCKET, Sn_MR_UDP, 0, 0);
+
+        len = dns_makequery(0, (char *)name, pDNSMSG, MAX_DNS_BUF_SIZE);
+        sendto(DNS_SOCKET, pDNSMSG, len, dns_ip, IPPORT_DOMAIN);
+
+        state = 1;
+        return -1; // 处理中
+    }
+
+    // 第二阶段：轮询接收
+    if (state == 1) {
+        if ((len = getSn_RX_RSR(DNS_SOCKET)) > 0) {
+            if (len > MAX_DNS_BUF_SIZE)
+                len = MAX_DNS_BUF_SIZE;
+
+            len        = recvfrom(DNS_SOCKET, pDNSMSG, len, ip, &port);
+            int8_t ret = parseDNSMSG(&dhp, pDNSMSG, ip_from_dns);
+            close(DNS_SOCKET);
+            state = 0;
+            return ret; // 1成功 / 0失败
+        }
+        // 超时处理
+        ret_check_timeout = check_DNS_timeout();
+
+        if (ret_check_timeout < 0) {
+            close(DNS_SOCKET);
+            state = 0;
+            return 0;
+        } else if (ret_check_timeout == 0) {
+            // 重发
+            len = dns_makequery(0, (char *)name, pDNSMSG, MAX_DNS_BUF_SIZE);
+            sendto(DNS_SOCKET, pDNSMSG, len, dns_ip, IPPORT_DOMAIN);
+        }
+        return -1; // 还没完成
+    }
+    return -1;
+}
+
 /* DNS TIMER HANDLER */
+#include "../Source/bsp/bsp_usart/bsp_usart.h"
 void DNS_time_handler(void)
 {
     dns_1s_tick++;

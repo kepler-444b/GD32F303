@@ -3,67 +3,56 @@
 #include "../Source/bsp/bsp_usart/bsp_usart.h"
 #include "../Source/app/app_evenbus/app_eventbus.h"
 #include "../Source/app/app_protocol/app_protocol.h"
+#include "../Source/app/app_public_protocol/app_public_protocol.h"
+#include "../Source/app/app_public_protocol/app_public.h"
 #include "systick.h"
 #include <stdbool.h>
 #include <string.h>
 
-#define PANEL_FH1 0xFF
-#define PANEL_FH2 0xAA
-
 // 函数声明
 static void app_panel_protocol_check(usart2_rx_buf_t *buf);
-static void app_bulid_panel_frame(void);
+static void app_build_panel_frame_by_sid(uint8_t id);
+static void app_build_extend_frame_by_sid(uint8_t id);
+static void app_build_extend_frame_by_gaddr(uint8_t addr, uint8_t lum);
+
+static void app_public_exe_scene_by_sid(uint8_t scene_id);
 static void app_build_extend_frame(void);
+static void app_build_panel_frame(void);
+
 static void app_public_event_handler(event_type_e event, void *params);
 
-static void app_panel_protocol_parse(const key_panel_t *src_cfg, const panel_src_info_t *p_status);
-static void app_public_bind_cfg_parse(const char *str);
-static void app_public_panel_cfg_parse(const char *str);
-
-static void app_set_extend_table(uint8_t panel_num, uint8_t key_num, bool key_status);
-static void app_set_panel_table(uint8_t sub_idx, uint8_t addr_idx, uint8_t key_num, bool key_status);
-
-static void panel_light_mode(const key_panel_t *p_cfg, const panel_src_info_t *p_status);
-
-static panel_full_status_t my_panel_full_status; //  存储面板状态信息
+static panel_full_status_t my_panel_full_status; //  存储设备状态信息
 static panel_src_info_t my_panel_status;         //  面板上报数据
 
-static extend_status_t my_extend_status_t;
+static panel_all_status_t my_panel_all_status;
+static extend_all_status_t my_extend_all_status_t; // 所有扩展设备的状态
 
-static uint8_t panel_count;
+static extend_tx_buf_t my_extend_tx_buf; // 发送给扩展设备的数据帧
+static panel_tx_buf_t my_panel_tx_buf;   // 发送给面板设备的数据帧
 
 void app_public_protocol_init(void)
 {
-    app_protocol_init(); // 初始化串口
-
+    app_uart_init_all(); // 初始化设备所用串口
     app_public_cfg_init();
-
-    panel_count = app_public_get_panel_count();
     app_eventbus_subscribe(app_public_event_handler);
 }
 
 static void app_public_event_handler(event_type_e event, void *params)
 {
     switch (event) {
-        case EVENT_USART_RECV_MSG: {
+        case EVENT_USART2_RECV_MSG: {
             usart2_rx_buf_t *frame = (usart2_rx_buf_t *)params;
             app_panel_protocol_check(frame);
-        } break;
-        case MQTT_BIND_CFG_MSG: { // 处理绑定信息
-            app_public_bind_cfg_parse((const char *)params);
-
-        } break;
-        case MQTT_PANEL_CFG_MSG: { // 处理配置信息
-            app_public_panel_cfg_parse((const char *)params);
         } break;
         default:
             break;
     }
 }
 
+// 处理面板发来的信息
 static void app_panel_protocol_check(usart2_rx_buf_t *buf)
 {
-    APP_PRINTF_BUF("buf", buf->buffer, buf->length);
+    // APP_PRINTF_BUF("buf", buf->buffer, buf->length);
     if (buf->buffer[0] != PANEL_FRAME_RX_HEAD) {
         APP_ERROR("panel frame");
         return;
@@ -76,215 +65,298 @@ static void app_panel_protocol_check(usart2_rx_buf_t *buf)
         APP_ERROR("panel frame crc");
         return;
     }
-
+    my_panel_status.type     = buf->buffer[1];
     my_panel_status.src_addr = buf->buffer[3]; // src_addr
     my_panel_status.status   = buf->buffer[5]; // status
     my_panel_status.key_num  = buf->buffer[6]; // key_num
+    my_panel_status.reserve  = buf->buffer[7]; // reserve
 
-    // 根据上报的 status 和 key_num 计算出上报按键的状态
-    my_panel_status.key_status = (my_panel_status.status >> my_panel_status.key_num) & 0x01;
+    switch (my_panel_status.type) {
+        case KNOB: {
+            const bind_group_t *binds       = app_public_get_bind_group();
+            const uint8_t active_group_bind = app_public_get_active_group_bind();
 
-    const key_panel_t *src_cfg = NULL; // 获取键位配置信息
-    for (uint8_t panel_num = 0; panel_num < panel_count; panel_num++) {
-        const panel_info_t *all_cfg = app_public_get_cfg(panel_num);
-        if (all_cfg == NULL) {
-            continue;
-        }
+            static uint8_t last_lum[GROUP_ID_MAX] = {0};
 
-        if (all_cfg->addr == my_panel_status.src_addr) { // 匹配到面板配置
-            APP_PRINTF("cfg->addr:%02X panel_addr:%02X\n", all_cfg->addr, my_panel_status.src_addr);
-            src_cfg = &all_cfg->key_cfg[my_panel_status.key_num];
-            break;
-        }
-    }
-
-    if (src_cfg == NULL) {
-        APP_ERROR("panel addr not found: %02X", my_panel_status.src_addr);
-        return;
-    }
-
-    for (uint8_t panel_num = 0; panel_num < panel_count; panel_num++) {
-        const key_panel_t *cfg = app_public_get_cfg(panel_num)->key_cfg;
-        for (uint8_t key_num; key_num < KEY_NUMBER; key_num++) {
-            if (src_cfg->func == cfg->func) { // 匹配功能
+            for (uint8_t i = 0; i < active_group_bind; i++) {
+                if (binds->addr == binds[i].addr) { // 匹配上绑定的群组
+                    app_build_extend_frame_by_gaddr(binds[i].addr, my_panel_status.reserve);
+                    app_display_resource_icon();
+                }
             }
-        }
-    }
+        } break;
+        case KEY: {
+            // 根据上报的 status 和 key_num 计算出上报按键的状态
+            my_panel_status.key_status = (my_panel_status.status >> my_panel_status.key_num) & 0x01;
+            // APP_PRINTF("src_addr:%02X key_num:%02X key_status:%02X\n", my_panel_status.src_addr, my_panel_status.key_num, my_panel_status.key_status);
 
-    app_panel_protocol_parse(src_cfg, &my_panel_status);
+            const bind_scene_t *binds       = app_public_get_bind_scene();         // 获取绑定信息
+            const uint8_t active_scene_bind = app_ppublic_get_active_scene_bind(); // 获取激活的绑定信息条目
+
+            for (uint8_t i = 0; i < active_scene_bind; i++) {
+                if (binds[i].addr == my_panel_status.src_addr &&
+                    binds[i].key_num == my_panel_status.key_num &&
+                    binds[i].status == my_panel_status.key_status &&
+                    binds[i].scene_id != 0xFF) {
+                    app_public_exe_scene_by_sid(binds[i].scene_id);
+                }
+            }
+        } break;
+        default:
+            return;
+    }
 }
 
-static void app_panel_protocol_parse(const key_panel_t *src_cfg, const panel_src_info_t *p_status)
+// 根据场景id构造面板数据帧
+static void app_build_panel_frame_by_sid(uint8_t id)
 {
-    switch (src_cfg->func) {
-        // case ALL_CLOSE: // 总关
-        //     panel_all_close(frame, cfg);
-        //     break;
-        // case ALL_ON_OFF: // 总开关
-        //     panel_all_on_off(frame, cfg);
-        //     break;
-        // case CLEAN_ROOM: // 清理
-        //     panel_clean_room(frame, cfg);
-        //     break;
-        // case DND_MODE: // 勿扰
-        //     panel_dnd_mode(frame, cfg);
-        //     break;
-        // case LATER_MODE: // 请稍后
-        //     panel_later_mode(frame, cfg);
-        //     break;
-        // case CHECK_OUT: // 退房
-        //     panel_chect_out(frame, cfg);
-        //     break;
-        // case SOS_MODE: // 紧急呼叫
-        //     panel_sos_mode(frame, cfg);
-        //     break;
-        // case SERVICE: // 请求服务
-        //     panel_service(frame, cfg);
-        //     break;
-        // case CURTAIN_OPEN: // 窗帘开
-        //     panel_curtain_open(frame, cfg);
-        //     break;
-        // case CURTAIN_CLOSE: // 窗帘关
-        //     panel_curtain_close(frame, cfg);
-        //     break;
-        // case SCENE_MODE: // 场景模式
-        //     panel_scene_mode(frame, cfg);
-        //     break;
-        case LIGHT_MODE: // 灯控模式
-            panel_light_mode(src_cfg, p_status);
-            break;
-            // case NIGHT_LIGHT: // 夜灯模式
-            //     panel_night_light(frame, cfg);
+    const scene_id_t *scenes = app_public_get_scene();
+    uint8_t active_scene     = app_public_get_active_scene();
+
+    // 遍历所有激活场景
+    for (uint8_t i = 0; i < active_scene; i++) {
+        if (scenes[i].id != id) continue; // 如果 id 不匹配, 跳过
+
+        // 遍历每个面板
+        for (uint8_t j = 0; j < PANEL_DEV_MAX; j++) {
+            // 遍历 0~5 位
+            uint8_t sub_idx  = j / 8; // 在哪个 sub_frame 中
+            uint8_t addr_idx = j % 8; // 在该 sub_frame 中的第几个地址
+
+            for (uint8_t bit = 0; bit <= 5; bit++) {
+                // 如果 ctrl 的该位被勾选,则赋值 status 对应位
+                if (scenes[i].key_ctrl[j] & (1U << bit)) {
+
+                    my_panel_full_status.sub_frame[sub_idx].idx[j].status &= ~(1U << bit);
+                    my_panel_full_status.sub_frame[sub_idx].idx[j].status |= (scenes[i].key_status[j] & (1U << bit));
+                    APP_PRINTF_BUF("panel_status", &my_panel_full_status, sizeof(my_panel_full_status));
+                }
+            }
+            if (BIT7(scenes[i].key_reserve[j])) { // 是否控制该旋钮
+
+                my_panel_full_status.sub_frame[sub_idx].idx[j].status |= (1U << 6); // 将 status 的 bit6 置1,表示key_reserve中的数据为旋钮值
+                my_panel_full_status.sub_frame[sub_idx].idx[j].reserve = scenes[i].key_reserve[j] & 0x7F;
+            }
+        }
+        app_build_panel_frame();
+        break;
     }
-    app_bulid_panel_frame();
+}
+
+// 根据场景id构造扩展数据帧
+static void app_build_extend_frame_by_sid(uint8_t id)
+{
+    const scene_id_t *scenes = app_public_get_scene();
+    uint8_t active_scene     = app_public_get_active_scene(); // 获取活跃的场景数量
+
+    for (uint8_t i = 0; i < active_scene; i++) {
+        if (scenes[i].id != id) continue;
+
+        // 处理 LED 部分
+        for (uint8_t j = 0; j < LED_NUM_MAX; j++) {
+            if (!(scenes[i].led[j] & 0x80)) continue;
+
+            uint8_t val    = scenes[i].led[j] & 0x7F; // 读取实际的亮度值
+            uint8_t *p_led = app_get_led_by_num(&my_extend_all_status_t, j);
+            if (p_led) *p_led = val;
+        }
+
+        // 将 relay_sel_1 的首地址作为 9 字节缓冲区的起点
+        uint8_t *p_relay_base = my_extend_all_status_t.relay_sel_1;
+
+        for (uint8_t g = 0; g < 9; g++) {
+            uint8_t ctrl   = scenes[i].relay[g * 2];     // 控制位字节
+            uint8_t status = scenes[i].relay[g * 2 + 1]; // 状态位字节
+
+            if (ctrl == 0) continue; // 该组无变化，跳过
+
+            // 使用掩码位运算：保留(非控制位) + 应用(控制位 & 状态值)
+            p_relay_base[g] = (p_relay_base[g] & ~ctrl) | (status & ctrl);
+        }
+
+        app_build_extend_frame();
+        break;
+    }
+}
+
+// 根据群组地址构造扩展数据帧
+static void app_build_extend_frame_by_gaddr(uint8_t addr, uint8_t lum)
+{
+    const bind_group_t *groups = app_public_get_bind_group();
+    uint8_t active_group       = app_public_get_active_group_bind();
+
+    for (uint8_t i = 0; i < active_group; i++) {
+
+        if (groups[i].addr != addr) continue;
+
+        for (uint8_t j = 0; j < 8; j++) {
+            for (uint8_t bit = 0; bit < 8; bit++) {
+
+                if (groups[i].ctrls[j] & (1U << bit)) {
+
+                    uint8_t led = j * 8 + bit;
+                    if (led <= 3) {
+                        my_extend_all_status_t.led_sel_1[led] = lum;
+                    }
+                }
+            }
+        }
+
+        app_build_extend_frame();
+        break;
+    }
+}
+
+// 根据场景id执行场景
+static void app_public_exe_scene_by_sid(uint8_t scene_id)
+{
+    app_build_panel_frame_by_sid(scene_id);  // 根据场景id构造面板数据帧
+    app_build_extend_frame_by_sid(scene_id); // 根据场景id构造扩展数据帧
+
+    app_display_scene_icon(scene_id); // 控制显示屏的场景页面
+    app_display_resource_icon();      // 控制显示屏的资源页面
+}
+
+// 执行场景
+void app_public_exe_scene(const char *str)
+{
+    uint8_t scene_id = 0xFF;
+    uint16_t buf_len = app_string_to_bytes(str, &scene_id, sizeof(scene_id));
+    if (scene_id > SCENE_ID_MAX) {
+        APP_ERROR("scene id is too large");
+        return;
+    }
+    app_public_exe_scene_by_sid(scene_id);
+}
+
+// 显示屏控制执行场景
+void app_display_exe_scene(uint8_t scene_id)
+{
+    if (scene_id > SCENE_ID_MAX) {
+        APP_ERROR("scene id is too large");
+        return;
+    }
+    app_public_exe_scene_by_sid(scene_id);
+}
+
+// 删除配置信息
+void app_public_del_cfg(const char *str)
+{
+    APP_PRINTF("%s\n", str);
+    if (strcmp(str, "DelScene") == 0) { // 删除场景信息
+        app_del_scene_cfg();
+    } else if (strcmp(str, "DelBind") == 0) { // 删除绑定信息
+        app_del_bind_cfg();
+    }
+}
+
+// 绑定场景
+void app_public_bind_scene_cfg_parse(const char *str)
+{
+    static uint8_t bind_info[10];
+    uint16_t buf_len = app_string_to_bytes(str, bind_info, 10);
+    app_set_bind_scene_cfg(bind_info, buf_len);
+}
+
+// 绑定群组
+void app_public_bind_group_cfg_parse(const char *str)
+{
+    static uint8_t bind_info[24];
+    uint16_t buf_len = app_string_to_bytes(str, bind_info, 24);
+    app_set_bind_group_cfg(bind_info, buf_len);
+}
+
+// 设置场景
+void app_public_scene_cfg_parse(const char *str)
+{
+    static uint8_t scene_info[SCENE_INFO_SIZE];
+    memset(scene_info, 0, SCENE_INFO_SIZE);
+    uint16_t buf_len = app_string_to_bytes(str, scene_info, SCENE_INFO_SIZE);
+
+    app_set_scene_cfg(scene_info, SCENE_INFO_SIZE);
+}
+
+// 设置扩展状态
+void app_puublic_set_extend(const char *str)
+{
+    uint16_t str_len = strlen(str);
+    if (str_len != SET_EXTEND_MAX) {
+        APP_ERROR("app_puublic_set_extend data");
+    }
+
+    char relay_str[72 + 1] = {0};
+    char led_str[64 + 1]   = {0};
+
+    snprintf(relay_str, sizeof(relay_str), "%.*s", 72, str);
+    snprintf(led_str, sizeof(led_str), "%.*s", 64, str + 72);
+
+    // 测试打印
+    printf("relay_str: %s\n", relay_str);
+    printf("led_str: %s\n", led_str);
+
+    uint8_t relay_arr[9] = {0};
+    uint8_t led_arr[32]  = {0};
+
+    app_pack_bits(relay_str, sizeof(relay_arr), relay_arr);
+    app_string_to_bytes(led_str, led_arr, sizeof(led_arr));
+    APP_PRINTF_BUF("led_arr", led_arr, sizeof(led_arr));
+
+    memcpy(my_extend_all_status_t.relay_sel_1, relay_arr, 6);
+    memcpy(my_extend_all_status_t.relay_sel_2, relay_arr + 6, 3);
+
+    memcpy(my_extend_all_status_t.led_sel_1, led_arr, 4);
+    memcpy(my_extend_all_status_t.led_sel_2, led_arr + 4, 12);
+    memcpy(my_extend_all_status_t.led_sel_3, led_arr + 16, 8);
+    memcpy(my_extend_all_status_t.led_sel_4, led_arr + 24, 8);
+
+    // APP_PRINTF_BUF("relay_sel_1", my_extend_all_status_t.relay_sel_1, sizeof(my_extend_all_status_t.relay_sel_1));
+    // APP_PRINTF_BUF("relay_sel_2", my_extend_all_status_t.relay_sel_2, sizeof(my_extend_all_status_t.relay_sel_2));
+
+    // APP_PRINTF_BUF("led_sel_1", my_extend_all_status_t.led_sel_1, sizeof(my_extend_all_status_t.led_sel_1));
+    // APP_PRINTF_BUF("led_sel_2", my_extend_all_status_t.led_sel_2, sizeof(my_extend_all_status_t.led_sel_2));
+    // APP_PRINTF_BUF("led_sel_3", my_extend_all_status_t.led_sel_3, sizeof(my_extend_all_status_t.led_sel_3));
+    // APP_PRINTF_BUF("led_sel_4", my_extend_all_status_t.led_sel_4, sizeof(my_extend_all_status_t.led_sel_4));
     app_build_extend_frame();
 }
 
-static void panel_light_mode(const key_panel_t *src_cfg, const panel_src_info_t *src_info)
+// 获取扩展状态
+extend_all_status_t *app_public_get_extend(void)
 {
-    for (uint8_t panel_num = 0; panel_num < panel_count; panel_num++) {
-        const panel_info_t *p_cfg = app_public_get_cfg(panel_num); // 匹配面板配置
-
-        for (uint8_t key_num = 0; key_num < KEY_NUMBER; key_num++) {
-
-            const key_panel_t *k_cfg = &p_cfg->key_cfg[key_num]; // 匹配到按键配置
-
-            bool func_match  = (src_cfg->func == LIGHT_MODE);
-            bool group_match = (src_cfg->group == k_cfg->group || src_cfg->group == 0xFF);
-            bool skip_group  = (src_cfg->group == 0x00); // 若双控分组为0,则不双控
-
-            bool special = ((BIT2(src_cfg->perm) && BIT4(src_cfg->perm)) && BIT4(k_cfg->perm));
-
-            if (!func_match || !group_match) {
-                continue;
-            }
-
-            uint8_t sub_idx  = p_cfg->addr / 8; // 在哪个 sub_frame 中
-            uint8_t addr_idx = p_cfg->addr % 8; // 在该 sub_frame 中的第几个地址
-
-            if (skip_group) { // 跳过(只控制自己)
-
-                if ((src_info->src_addr == p_cfg->addr) && (src_info->key_num == key_num)) {
-                    my_panel_full_status.sub_frame[sub_idx].addr[addr_idx] = src_info->status;
-                    app_set_extend_table(panel_num, key_num, src_info->key_status);
-                }
-            } else { // 双控
-
-                app_set_panel_table(sub_idx, addr_idx, src_info->key_num, src_info->key_status);
-                app_set_extend_table(panel_num, key_num, src_info->status);
-            }
-        }
-    }
+    return &my_extend_all_status_t;
 }
 
-// 设置 led 和 relay 状态表
-static void app_set_extend_table(uint8_t panel_num, uint8_t key_num, bool key_status)
+// 构造扩展数据帧
+static void app_build_extend_frame(void)
 {
+    memset(&my_extend_tx_buf, 0, sizeof(my_extend_tx_buf));
 
-    const key_bind_t *k_bind = &app_public_get_bind(panel_num)->key_bind[key_num];
+    my_extend_tx_buf.fh   = EXTEND_FRAME_TX_HEAD;
+    my_extend_tx_buf.type = EXTEND_FRAME_TX_TYPE;
 
-    for (uint8_t i = 0; i < LED_NUM_MAX; i++) {
+    memcpy(my_extend_tx_buf.relay_sel_1, my_extend_all_status_t.relay_sel_1, sizeof(my_extend_all_status_t.relay_sel_1)); // 0~6路继电器
+    memcmp(my_extend_tx_buf.tg_value, my_extend_all_status_t.tg_value, sizeof(my_extend_tx_buf.tg_value));                // 0~4路可控硅调光
+    my_extend_tx_buf.crc_1 = app_panel_frame_sum(&my_extend_tx_buf.fh, 12);
 
-        uint8_t led_bind = k_bind->led_bind[i];
+    memcpy(my_extend_tx_buf.led_sel_1, my_extend_all_status_t.led_sel_1, sizeof(my_extend_tx_buf.led_sel_1)); // 0~4路 LED
+    my_extend_tx_buf.reserve = 0x00;
+    my_extend_tx_buf.crc_2   = app_panel_frame_crc(my_extend_tx_buf.led_sel_1, sizeof(my_extend_tx_buf.led_sel_1));
 
-        if (!BIT7(led_bind) || (k_bind->led_bind[0] == 0xFF)) { // 未勾选该 LED,跳过
-            continue;
-        }
+    memcpy(my_extend_tx_buf.led_sel_2, my_extend_all_status_t.led_sel_2, sizeof(my_extend_all_status_t.led_sel_2)); // 5~16路 LED
+    my_extend_tx_buf.crc_3 = app_panel_frame_crc(my_extend_tx_buf.led_sel_2, sizeof(my_extend_tx_buf.led_sel_2) - 1);
 
-        uint8_t brightness = led_bind & 0x7F;             // 亮度值只保留低7位
-        uint8_t out_value  = key_status ? brightness : 0; // 开:输出亮度值;关:输出0
+    memcpy(my_extend_tx_buf.led_sel_3, my_extend_all_status_t.led_sel_3, sizeof(my_extend_tx_buf.led_sel_3));       // 17 ~24路 LED
+    memcmp(my_extend_tx_buf.air_dev, my_extend_all_status_t.air_dev, sizeof(my_extend_tx_buf.air_dev));             // 空调模块
+    memcmp(my_extend_tx_buf.relay_sel_2, my_extend_all_status_t.relay_sel_2, sizeof(my_extend_tx_buf.relay_sel_2)); // 7~9路继电器
+    memcmp(my_extend_tx_buf.led_sel_4, my_extend_all_status_t.led_sel_4, sizeof(my_extend_tx_buf.led_sel_4));       // 25~32路 LED
 
-        if (BIT7(k_bind->led_bind[i])) { // 查看该按键勾选了哪些 LED
-            uint8_t brightness = k_bind->led_bind[i] & 0x7F;
-            if (i < 4) {
-                my_extend_status_t.led_sel_1[i] = out_value;
-            } else if (i < 12) {
-                my_extend_status_t.led_sel_2[i - 4] = out_value;
-            } else if (i < 24) {
-                my_extend_status_t.led_sel_3[i - 12] = out_value;
-            } else if (i < 32) {
-                my_extend_status_t.led_sel_4[i - 24] = out_value;
-            }
-        }
-    }
+    APP_PRINTF_BUF("my_extend_tx_buf", (uint8_t *)&my_extend_tx_buf, sizeof(my_extend_tx_buf));
 
-    for (uint8_t i = 0; i < RELAY_NUM_MAX; i++) {
-        uint8_t relay_sel = k_bind->relay_bind[i]; // 需要处理的继电器掩码
-
-        if ((relay_sel == 0) || (relay_sel == 0xFF)) { // 未勾选该 relay,跳过
-            continue;
-        }
-        if (i < 5) {
-            if (key_status) {
-                my_extend_status_t.relay_sel_1[i] |= relay_sel; // 对应位置1
-            } else {
-                my_extend_status_t.relay_sel_1[i] &= ~relay_sel; // 对应位清0
-            }
-        } else if (i < 8) {
-            if (key_status) {
-                my_extend_status_t.relay_sel_2[i - 5] |= relay_sel;
-            } else {
-                my_extend_status_t.relay_sel_2[i - 5] &= ~relay_sel;
-            }
-        }
-    }
-    APP_PRINTF_BUF("relay_sel_1", &my_extend_status_t.relay_sel_1, sizeof(my_extend_status_t.relay_sel_1));
-    APP_PRINTF_BUF("led_sel_1", &my_extend_status_t.led_sel_1, sizeof(my_extend_status_t));
+    bsp_usart_tx_buf((uint8_t *)&my_extend_tx_buf, sizeof(my_extend_tx_buf), UART3);
 }
 
-// 设置面板状态表
-static void app_set_panel_table(uint8_t sub_idx, uint8_t addr_idx, uint8_t key_num, bool key_status)
+// 构造面板数据帧
+static void app_build_panel_frame(void)
 {
-    if (key_status) {
-        my_panel_full_status.sub_frame[sub_idx].addr[addr_idx] |= (1 << key_num);
-
-    } else {
-        my_panel_full_status.sub_frame[sub_idx].addr[addr_idx] &= ~(1 << key_num);
-    }
-}
-
-static void app_public_bind_cfg_parse(const char *str)
-{
-    static uint8_t bind_info[BIND_INFO_SIZE];
-    memset(bind_info, 0, BIND_INFO_SIZE);
-    uint16_t buf_len = app_string_to_bytes(str, bind_info, BIND_INFO_SIZE);
-
-    app_set_bind_cfg(bind_info, buf_len);
-}
-
-static void app_public_panel_cfg_parse(const char *str)
-{
-    static uint8_t panel_info[PANEL_INFO_SIZE];
-    memset(panel_info, 0, PANEL_INFO_SIZE);
-    uint16_t buf_len = app_string_to_bytes(str, panel_info, PANEL_INFO_SIZE);
-
-    app_set_panel_cfg(panel_info, PANEL_INFO_SIZE);
-}
-
-// 构造发送到面板的数据帧
-static void app_bulid_panel_frame(void)
-{
-    static panel_tx_buf_t my_panel_tx_buf;
     memset(&my_panel_tx_buf, 0, sizeof(my_panel_tx_buf));
 
     my_panel_tx_buf.fh_1       = PANEL_FRAME_TX_HEAD_1;
@@ -296,34 +368,22 @@ static void app_bulid_panel_frame(void)
     my_panel_tx_buf.ft_1       = 0x0D;
     my_panel_tx_buf.ft_2       = 0x0A;
 
-    // APP_PRINTF_BUF("panel_tx_buf", &my_panel_tx_buf, sizeof(my_panel_tx_buf));
+    APP_PRINTF_BUF("panel_tx_buf", &my_panel_tx_buf, sizeof(my_panel_tx_buf));
     bsp_usart_tx_buf((uint8_t *)&my_panel_tx_buf, sizeof(my_panel_tx_buf), USART2);
 }
 
-static void app_build_extend_frame(void)
+uint8_t *app_get_led_by_num(extend_all_status_t *status, uint8_t index)
 {
-    static extend_tx_buf_t extend_tx_buf;
-    memset(&extend_tx_buf, 0, sizeof(extend_tx_buf));
+    if (status == NULL) return NULL;
 
-    extend_tx_buf.fh   = EXTEND_FRAME_TX_HEAD;
-    extend_tx_buf.type = EXTEND_FRAME_TX_TYPE;
-
-    memcpy(extend_tx_buf.relay_sel_1, my_extend_status_t.relay_sel_1, sizeof(my_extend_status_t.relay_sel_1)); // 0~6路继电器
-    memcmp(extend_tx_buf.tg_value, my_extend_status_t.tg_value, sizeof(extend_tx_buf.tg_value));               // 0~4路可控硅调光
-    extend_tx_buf.crc_1 = app_panel_frame_sum(&extend_tx_buf.fh, 12);
-
-    memcpy(extend_tx_buf.led_sel_1, my_extend_status_t.led_sel_1, sizeof(extend_tx_buf.led_sel_1)); // 0~4路 LED
-    extend_tx_buf.reserve = 0x00;
-    extend_tx_buf.crc_2   = app_panel_frame_crc(extend_tx_buf.led_sel_1, sizeof(extend_tx_buf.led_sel_1));
-
-    memcpy(extend_tx_buf.led_sel_2, my_extend_status_t.led_sel_2, sizeof(my_extend_status_t.led_sel_2)); // 5~16路 LED
-    extend_tx_buf.crc_3 = app_panel_frame_crc(extend_tx_buf.led_sel_2, sizeof(extend_tx_buf.led_sel_2) - 1);
-
-    memcpy(extend_tx_buf.led_sel_3, my_extend_status_t.led_sel_3, sizeof(extend_tx_buf.led_sel_3));       // 17 ~24路 LED
-    memcmp(extend_tx_buf.air_dev, my_extend_status_t.air_dev, sizeof(extend_tx_buf.air_dev));             // 空调模块
-    memcmp(extend_tx_buf.relay_sel_2, my_extend_status_t.relay_sel_2, sizeof(extend_tx_buf.relay_sel_2)); // 7~9路继电器
-    memcmp(extend_tx_buf.led_sel_4, my_extend_status_t.led_sel_4, sizeof(extend_tx_buf.led_sel_4));       // 25~32路 LED
-
-    APP_PRINTF_BUF("extend_tx_buf", (uint8_t *)&extend_tx_buf, sizeof(extend_tx_buf));
-    bsp_usart_tx_buf((uint8_t *)&extend_tx_buf, sizeof(extend_tx_buf), UART4);
+    if (index < 4) {
+        return &status->led_sel_1[index];
+    } else if (index < 16) {
+        return &status->led_sel_2[index - 4];
+    } else if (index < 24) {
+        return &status->led_sel_3[index - 16];
+    } else if (index < 32) {
+        return &status->led_sel_4[index - 24];
+    }
+    return NULL;
 }

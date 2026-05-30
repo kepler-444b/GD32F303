@@ -104,3 +104,34 @@ __IO fmc_state_enum app_flash_read_word(uint32_t flash_start_addr, uint32_t *buf
 
     return FMC_READY; // 读取成功
 }
+
+__IO fmc_state_enum app_flash_erase_page(uint32_t page_addr)
+{
+    fmc_state_enum status = FMC_READY;
+
+    // 1. 地址对齐检查：地址必须是页大小的整数倍
+    if ((page_addr % FLASH_PAGE_SIZE) != 0) {
+        return FMC_PGERR;
+    }
+
+    // 2. 解锁 Flash 控制器
+    fmc_unlock();
+
+    // 3. 关键：清除状态标志位，防止之前的错误挂起导致本次操作失效
+    fmc_flag_clear(FMC_FLAG_BANK0_END | FMC_FLAG_BANK0_WPERR | FMC_FLAG_BANK0_PGERR);
+
+    // 4. 执行页擦除指令
+    status = fmc_page_erase(page_addr);
+
+    // 5. 校验：擦除后 Flash 的内容应全为 0xFF
+    if (status == FMC_READY) {
+        if ((*(__IO uint32_t *)page_addr) != 0xFFFFFFFF) {
+            status = FMC_PGERR; // 擦除校验失败
+        }
+    }
+
+    // 6. 重新锁定 Flash
+    fmc_lock();
+
+    return status;
+}

@@ -14,6 +14,7 @@
  *    Allan Stockdill-Mander/Ian Craggs - initial API and implementation and/or initial documentation
  *******************************************************************************/
 #include "MQTTClient.h"
+#include "../Source/app/app_evenbus/app_eventbus.h"
 
 static void NewMessageData(MessageData *md, MQTTString *aTopicName, MQTTMessage *aMessage)
 {
@@ -40,7 +41,6 @@ static int sendPacket(MQTTClient *c, int length, Timer *timer)
     if (sent == length) {
         TimerCountdown(&c->ping_timer, c->keepAliveInterval); // record the fact that we have successfully sent the packet
         rc = SUCCESSS;
-        // printf("SUCCESSS\n");
     } else {
         rc = FAILURE;
         printf("FAILURE\n");
@@ -178,36 +178,51 @@ int deliverMessage(MQTTClient *c, MQTTString *topicName, MQTTMessage *message)
     return rc;
 }
 
+// 维持 MQTT 心跳
 int keepalive(MQTTClient *c)
 {
     int rc = FAILURE;
-
-    if (c->keepAliveInterval == 0) {
-        rc = SUCCESSS;
-        goto exit;
+    if (c->keepAliveInterval == 0) { // 没有设置心跳时间,即不启用心跳机制
+        return SUCCESSS;
     }
 
-    if (TimerIsExpired(&c->ping_timer)) {
-        if (!c->ping_outstanding) {
+    if (c->ping_outstanding && TimerIsExpired(&c->ping_timer)) { // 已经发送了心跳,等待时间已经超时,心跳判定为掉线
+        if (!c->heartbeat_timeout_flag) {
+            printf("keepalive FAIL\n");
+            c->heartbeat_timeout_flag = 1;
+            c->isconnected            = 0;
+            app_eventbus_publish(EVENT_NETWOR_OFF, NULL);
+            return FAILURE;
+        }
+    }
+
+    else { // 如果没有超时,则判断是否该发送心跳
+        if (TimerIsExpired(&c->ping_timer)) {
             Timer timer;
             TimerInit(&timer);
             TimerCountdownMS(&timer, 1000);
             int len = MQTTSerialize_pingreq(c->buf, c->buf_size);
-            if (len > 0 && (rc = sendPacket(c, len, &timer)) == SUCCESSS) { // send the ping packet
-                // 已经发送了一个 PINGREQ 心跳包
+            printf("ping_outstanding:%d\n", c->ping_outstanding);
+            if (len > 0 && (rc = sendPacket(c, len, &timer)) == SUCCESSS) {
                 c->ping_outstanding = 1;
-                // printf("send the ping packet\n");
+                TimerCountdown(&c->ping_timer, c->keepAliveInterval);
+            } else { // 发送心跳包失败,也判定为设备掉线
+                if (c->isconnected) {
+                    printf("send ping failed → network down\n");
+                    c->isconnected            = 0;
+                    c->heartbeat_timeout_flag = 1;
+                    app_eventbus_publish(EVENT_NETWOR_OFF, NULL);
+                }
+                return FAILURE;
             }
         }
     }
 
-exit:
     return rc;
 }
 
 int cycle(MQTTClient *c, Timer *timer)
 {
-    // printf("cycle\n");
     // read the socket, see what work is due
     unsigned short packet_type = readPacket(c, timer);
 
@@ -258,7 +273,7 @@ int cycle(MQTTClient *c, Timer *timer)
         case PUBCOMP:
             break;
         case PINGRESP:
-            // printf("PINGRESP\n");
+            printf("ping_outstanding:%d\n", c->ping_outstanding);
             c->ping_outstanding = 0;
             break;
     }
@@ -332,8 +347,9 @@ int MQTTConnect(MQTTClient *c, MQTTPacket_connectData *options)
 #if defined(MQTT_TASK)
     MutexLock(&c->mutex);
 #endif
-    if (c->isconnected) /* don't send connect packet again if we are already connected */
+    if (c->isconnected) { /* don't send connect packet again if we are already connected */
         goto exit;
+    }
 
     TimerInit(&connect_timer);
     TimerCountdownMS(&connect_timer, c->command_timeout_ms);
@@ -360,8 +376,10 @@ int MQTTConnect(MQTTClient *c, MQTTPacket_connectData *options)
         rc = FAILURE;
 
 exit:
-    if (rc == SUCCESSS)
+    if (rc == SUCCESSS) {
         c->isconnected = 1;
+        app_eventbus_publish(EVENT_NETWOR_ON, NULL);
+    }
 
 #if defined(MQTT_TASK)
     MutexUnlock(&c->mutex);
@@ -425,6 +443,7 @@ exit:
 
 int MQTTUnsubscribe(MQTTClient *c, const char *topicFilter)
 {
+    printf("MQTTUnsubscribe\n");
     int rc = FAILURE;
     Timer timer;
     MQTTString topic = MQTTString_initializer;
@@ -513,6 +532,7 @@ exit:
 
 int MQTTDisconnect(MQTTClient *c)
 {
+    printf("MQTTDisconnect\n");
     int rc = FAILURE;
     Timer timer; // we might wait for incomplete incoming publishes to complete
     int len = 0;

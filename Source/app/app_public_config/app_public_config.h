@@ -3,52 +3,71 @@
 
 #include <stdint.h>
 
-#define PANEL_INFO_SIZE     40 // 面板配置信息字节数
-#define BIND_INFO_SIZE      75 // 绑定信息的字节数
+#define PANEL_INFO_SIZE     40  // 面板配置信息字节数
+#define BIND_INFO_SIZE      139 // 绑定信息的字节数
+
+#define SCENE_INFO_SIZE     185
 
 #define BIND_INFO_DONE_SIZE 16 // 绑定信息完成字节数
+#define SCENE_INFO_DONE_SIZE
 
-#define PANEL_DEV_MAX       32 // 面板最大个数
-#define KEY_NUMBER          6  // 按键最大个数
+#define BIND_SCENE_MAX 128 // 绑定场景最大个数
+#define SCENE_ID_MAX   128 // 场景ID最大个数
+#define GROUP_ID_MAX   18  // 绑定群组最大个数
+#define PANEL_DEV_MAX  32  // 面板最大个数
+#define KEY_NUMBER     6   // 按键最大个数
 
-#define RELAY_NUM_MAX       9
-#define LED_NUM_MAX         64
+#define RELAY_NUM_MAX  18
+#define LED_NUM_MAX    32
 
-// 用于存放面板单个按键的配置信息
-typedef struct
-{
-    uint8_t func;        // 按键功能
-    uint8_t group;       // 双控分组
-    uint8_t area;        // 按键区域(高4位:总开关分区,低4位:场景分区)
-    uint8_t perm;        // 按键权限
-    uint8_t scene_group; // 场景分组
-} key_panel_t;
+// 场景结构体
+typedef struct {
+    uint8_t id;
+    uint8_t led[LED_NUM_MAX];     // 64路led状态
+    uint8_t relay[RELAY_NUM_MAX]; // 72路继电器状态
 
-// 用于存放单个面板的配置信息
-typedef struct
-{
-    uint8_t addr;
-    key_panel_t key_cfg[KEY_NUMBER];
-} panel_info_t;
+    uint8_t key_ctrl[PANEL_DEV_MAX];   // 32个面板控制状态
+    uint8_t key_status[PANEL_DEV_MAX]; // 32个面板实际状态
 
-// 用于存放单个按键的绑定信息
-typedef struct
-{
-    uint8_t led_bind[LED_NUM_MAX];     // 绑定的led
-    uint8_t relay_bind[RELAY_NUM_MAX]; // 绑定的relay
-} key_bind_t;
+    uint8_t key_reserve[PANEL_DEV_MAX]; // 32个面板保留
+} scene_id_t;
 
-typedef struct
-{
-    key_bind_t key_bind[KEY_NUMBER];
-} bind_info_t;
+// 绑定场景结构体
+typedef struct {
 
-const bind_info_t *app_public_get_bind(uint8_t panel_num);
-const panel_info_t *app_public_get_cfg(uint8_t panel_num);
+    uint8_t addr;     // 设备地址
+    uint8_t key_num;  // 按键号
+    uint8_t scene_id; // 场景id
+    uint8_t status;   // 安装见状态
+} bind_scene_t;
+
+// 绑定群组结构体
+typedef struct {
+
+    uint8_t addr;     // 设备地址
+    uint8_t ctrls[8]; // 被控led使能
+    uint8_t close_id; // 关闭场景
+    uint8_t open_id;  // 开启场景
+    uint8_t padding;  // 保证四字节对齐
+} bind_group_t;
 
 void app_public_cfg_init(void);
-void app_set_bind_cfg(const uint8_t *cfg, uint16_t len);
-void app_set_panel_cfg(const uint8_t *cfg, uint16_t len);
-const uint8_t app_public_get_panel_count(void);
+
+void app_set_scene_cfg(const uint8_t *cfg, uint16_t len);
+
+void app_set_bind_scene_cfg(const uint8_t *cfg, uint16_t len);
+void app_set_bind_group_cfg(const uint8_t *cfg, uint16_t len);
+
+void app_del_bind_cfg(void);
+void app_del_scene_cfg(void);
+
+const bind_scene_t *app_public_get_bind_scene(void);
+const uint8_t app_ppublic_get_active_scene_bind(void);
+
+const bind_group_t *app_public_get_bind_group(void);
+const uint8_t app_public_get_active_group_bind(void);
+
+const scene_id_t *app_public_get_scene(void);
+const uint8_t app_public_get_active_scene(void);
 
 #endif

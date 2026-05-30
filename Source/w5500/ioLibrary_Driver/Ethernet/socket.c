@@ -287,6 +287,62 @@ int8_t connect(uint8_t sn, uint8_t *addr, uint16_t port)
     return SOCK_OK;
 }
 
+int8_t connect_nb(uint8_t sn, uint8_t *addr, uint16_t port)
+{
+    static uint8_t state = 0;
+
+    switch (state) {
+        case 0: // 发起连接
+        {
+            uint32_t taddr;
+            taddr = ((uint32_t)addr[0] << 24) |
+                    ((uint32_t)addr[1] << 16) |
+                    ((uint32_t)addr[2] << 8) |
+                    (uint32_t)addr[3];
+
+            if (taddr == 0xFFFFFFFF || taddr == 0)
+                return SOCKERR_IPINVALID;
+
+            if (port == 0)
+                return SOCKERR_PORTZERO;
+
+            setSn_DIPR(sn, addr);
+            setSn_DPORT(sn, port);
+
+            setSn_CR(sn, Sn_CR_CONNECT);
+            while (getSn_CR(sn)); // 这个很快，不影响
+
+            state = 1;
+            return SOCK_BUSY; // 正在连接
+        }
+
+        case 1: // 等待连接结果
+        {
+            uint8_t sr = getSn_SR(sn);
+
+            if (sr == SOCK_ESTABLISHED) {
+                state = 0;
+                return SOCK_OK; // 成功
+            }
+
+            if (getSn_IR(sn) & Sn_IR_TIMEOUT) {
+                setSn_IR(sn, Sn_IR_TIMEOUT);
+                state = 0;
+                return SOCKERR_TIMEOUT;
+            }
+
+            if (sr == SOCK_CLOSED) {
+                state = 0;
+                return SOCKERR_SOCKCLOSED;
+            }
+
+            return SOCK_BUSY; // 还在连接
+        }
+    }
+
+    return SOCK_BUSY;
+}
+
 int8_t disconnect(uint8_t sn)
 {
     CHECK_SOCKNUM();

@@ -94,6 +94,13 @@ virtualFolder:
         - path: ../../Source/app/app_md5/app_md5.h
         - path: ../../Source/app/app_token/app_token.c
         - path: ../../Source/app/app_token/app_token.h
+        - path: ../../Source/app/app_public_protocol/app_display_protocol.c
+        - path: ../../Source/app/app_public_protocol/app_display_protocol.h
+        - path: ../../Source/app/app_rtc/app_rtc.c
+        - path: ../../Source/app/app_rtc/app_rtc.h
+        - path: ../../Source/app/app_public_protocol/app_public.h
+        - path: ../../Source/app/app_watchdog/app_watchdog.c
+        - path: ../../Source/app/app_watchdog/app_watchdog.h
       folders: []
     - name: Bsp
       files:
@@ -105,6 +112,12 @@ virtualFolder:
         - path: ../../Source/bsp/bsp_pcb/bsp_pcb.h
         - path: ../../Source/bsp/bsp_flash/bsp_flash.c
         - path: ../../Source/bsp/bsp_flash/bsp_flash.h
+        - path: ../../Source/bsp/bsp_adc/bsp_adc.c
+        - path: ../../Source/bsp/bsp_adc/bsp_adc.h
+        - path: ../../Source/bsp/bsp_i2c/bsp_i2c.c
+        - path: ../../Source/bsp/bsp_i2c/bsp_i2c.h
+        - path: ../../Source/bsp/bsp_board/bsp_board.c
+        - path: ../../Source/bsp/bsp_board/bsp_board.h
       folders: []
     - name: Ethernet
       files:
@@ -186,6 +199,8 @@ targets:
     excludeList:
       - <virtual_root>/Startup/startup_gd32f30x_cl.s
       - <virtual_root>/Startup/startup_gd32f30x_xd.s
+    settings:
+      debugger: cortex-debug
     toolchain: AC6
     toolchainConfigMap:
       AC6:
@@ -279,7 +294,7 @@ targets:
               isChecked: true
               isStartup: true
               mem:
-                size: "0x19000"
+                size: "0x1C000"
                 startAddr: "0x8004000"
               tag: IROM
             - id: 2

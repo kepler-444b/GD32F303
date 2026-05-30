@@ -16,12 +16,11 @@
 #define TIMER_PERIOD      999       ///< 定时器周期(1ms中断)
 
 // W5500 所需定时器
-
 void wiz_timer_init(void)
 {
     timer_parameter_struct timer_initpara;
 
-    rcu_periph_clock_enable(RCU_TIMER2);
+    rcu_periph_clock_enable(RCU_TIMER2); // 使能TIMER2时钟
     timer_deinit(TIMER2);
 
     timer_initpara.prescaler         = (SYSTEM_CLOCK_FREQ / 1000000) - 1; // 120 MHz / 120 = 1 MHz
@@ -73,39 +72,26 @@ void wiz_rst_int_init(void)
 
     gpio_init(GPIOB, GPIO_MODE_AF_PP, GPIO_OSPEED_50MHZ, GPIO_PIN_13 | GPIO_PIN_15); // SCK, MOSI
     gpio_init(GPIOB, GPIO_MODE_IN_FLOATING, GPIO_OSPEED_50MHZ, GPIO_PIN_14);         // MISO
-
-    gpio_init(WIZ_RST_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, WIZ_RST_PIN); // RST
-    gpio_init(WIZ_SCS_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, WIZ_SCS_PIN); // SCS
-    gpio_init(WIZ_INT_PORT, GPIO_MODE_IPU, GPIO_OSPEED_50MHZ, WIZ_INT_PIN);    // INT
+    gpio_init(WIZ_RST_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, WIZ_RST_PIN);       // RST
+    gpio_init(WIZ_SCS_PORT, GPIO_MODE_OUT_PP, GPIO_OSPEED_50MHZ, WIZ_SCS_PIN);       // SCS
+    gpio_init(WIZ_INT_PORT, GPIO_MODE_IPU, GPIO_OSPEED_50MHZ, WIZ_INT_PIN);          // INT
 
     gpio_bit_set(WIZ_RST_PORT, WIZ_RST_PIN);
 }
 
-/**
- * @brief   SPI select wizchip
- * @param   none
- * @return  none
- */
+// 选择W5500芯片(CS拉低)
 void wizchip_select(void)
 {
     gpio_bit_reset(WIZ_SCS_PORT, WIZ_SCS_PIN);
 }
 
-/**
- * @brief   SPI deselect wizchip
- * @param   none
- * @return  none
- */
+// 取消选择W5500芯片(CS拉高)
 void wizchip_deselect(void)
 {
     gpio_bit_set(WIZ_SCS_PORT, WIZ_SCS_PIN);
 }
 
-/**
- * @brief   SPI write 1 byte to wizchip
- * @param   dat:1 byte data
- * @return  none
- */
+// SPI发送1字节数据
 void wizchip_write_byte(uint8_t dat)
 {
     while (spi_i2s_flag_get(SPI1, SPI_FLAG_TBE) == RESET);
@@ -114,11 +100,7 @@ void wizchip_write_byte(uint8_t dat)
     SPI_DATA(SPI1);
 }
 
-/**
- * @brief   SPI read 1 byte from wizchip
- * @param   none
- * @return  1 byte data
- */
+// SPI读取1字节数据
 uint8_t wizchip_read_byte(void)
 {
     while (spi_i2s_flag_get(SPI1, SPI_FLAG_TBE) == RESET);
@@ -127,12 +109,7 @@ uint8_t wizchip_read_byte(void)
     return (uint8_t)SPI_DATA(SPI1);
 }
 
-/**
- * @brief   SPI write buff from wizchip
- * @param   buff:write buff
- * @param   len:write len
- * @return  none
- */
+// SPI批量写入数据
 void wizchip_write_buff(uint8_t *buf, uint16_t len)
 {
     uint16_t idx = 0;
@@ -141,12 +118,7 @@ void wizchip_write_buff(uint8_t *buf, uint16_t len)
     }
 }
 
-/**
- * @brief   SPI read buff from wizchip
- * @param   buff:read buff
- * @param   len:read len
- * @return  none
- */
+// SPI批量读取数据
 void wizchip_read_buff(uint8_t *buf, uint16_t len)
 {
     uint16_t idx = 0;
@@ -155,11 +127,7 @@ void wizchip_read_buff(uint8_t *buf, uint16_t len)
     }
 }
 
-/**
- * @brief   hardware reset wizchip
- * @param   none
- * @return  none
- */
+// W5500硬件复位
 void wizchip_reset(void)
 {
     gpio_bit_set(WIZ_RST_PORT, WIZ_RST_PIN);
@@ -170,18 +138,15 @@ void wizchip_reset(void)
     delay_1ms(10);
 }
 
-/**
- * @brief   wizchip spi callback register
- * @param   none
- * @return  none
- */
+// 注册W5500 SPI回调函数
 void wizchip_spi_cb_reg(void)
 {
-    reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);
-    reg_wizchip_spi_cbfunc(wizchip_read_byte, wizchip_write_byte);
-    reg_wizchip_spiburst_cbfunc(wizchip_read_buff, wizchip_write_buff);
+    reg_wizchip_cs_cbfunc(wizchip_select, wizchip_deselect);            // CS控制
+    reg_wizchip_spi_cbfunc(wizchip_read_byte, wizchip_write_byte);      // 单字节SPI
+    reg_wizchip_spiburst_cbfunc(wizchip_read_buff, wizchip_write_buff); // 批量SPI
 }
 
+// TIMER2中断服务函数
 void TIMER2_IRQHandler(void)
 {
     static uint32_t wiz_timer_1ms_count = 0;

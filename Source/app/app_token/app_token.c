@@ -56,7 +56,7 @@ static void app_token_hmac_md5(const uint8_t *key, int key_len, const char *msg,
     app_md5_final(out_mac, &ctx);
 }
 
-bool app_token_generate(device_info_t *dev)
+bool app_token_generate(dev_save_info_t *dev)
 {
     if (!dev || !dev->key[0] || !dev->products[0] || !dev->version[0] || dev->et == 0) {
         return false;
@@ -93,6 +93,5 @@ bool app_token_generate(device_info_t *dev)
 
     // 拼接最终 token 到 passwd
     snprintf(dev->passwd, sizeof(dev->passwd), "version=%s&res=%s&et=%u&method=md5&sign=%s", dev->version, res_enc, dev->et, sign_enc);
-
     return true;
 }

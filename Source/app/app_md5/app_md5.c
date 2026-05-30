@@ -213,48 +213,19 @@ static void app_md5_transform(uint32_t state[4], const uint8_t block[64])
     state[3] += d;
 }
 
-int app_md5_calculate_file(uint32_t flash_start_addr, uint32_t file_length, char out_md5_str[64])
+int app_md5_calculate_file(uint32_t flash_start_addr, uint32_t file_length, char out_md5[32])
 {
-#if 0
     MD5_CTX md5_ctx;
     uint32_t sector_buf[FLASH_PAGE_SIZE / 4];
-    uint32_t total_processed = 0;
     uint32_t bytes_remaining = file_length;
     uint32_t current_addr    = flash_start_addr;
+    uint8_t md5_bin[16]; // 临时存储二进制 MD5
 
     app_md5_init(&md5_ctx);
 
     while (bytes_remaining > 0) {
         uint32_t read_len         = (bytes_remaining >= FLASH_PAGE_SIZE) ? FLASH_PAGE_SIZE : bytes_remaining;
-        uint32_t aligned_read_len = (read_len + 3) & ~3;
-
-        memset(sector_buf, 0, sizeof(sector_buf));
-        if (app_flash_read_word(current_addr, sector_buf, aligned_read_len) != FMC_READY) {
-            printf("\nFlash Read Error at 0x%08X\n", current_addr);
-            return -1;
-        }
-
-        app_md5_update(&md5_ctx, (const uint8_t *)sector_buf, read_len);
-
-        total_processed += read_len;
-        bytes_remaining -= read_len;
-        current_addr += read_len;
-    }
-
-    app_md5_final(out_md5, &md5_ctx);
-    return 0;
-#endif
-    MD5_CTX md5_ctx;
-    uint32_t sector_buf[FLASH_PAGE_SIZE / 4];
-    uint32_t bytes_remaining = file_length;
-    uint32_t current_addr    = flash_start_addr;
-    uint8_t md5_bin[16];
-
-    app_md5_init(&md5_ctx);
-
-    while (bytes_remaining > 0) {
-        uint32_t read_len         = (bytes_remaining >= FLASH_PAGE_SIZE) ? FLASH_PAGE_SIZE : bytes_remaining;
-        uint32_t aligned_read_len = (read_len + 3) & ~3;
+        uint32_t aligned_read_len = (read_len + 3) & ~3; // 4字节对齐
 
         memset(sector_buf, 0, sizeof(sector_buf));
         if (app_flash_read_word(current_addr, sector_buf, aligned_read_len) != FMC_READY) {
@@ -268,13 +239,14 @@ int app_md5_calculate_file(uint32_t flash_start_addr, uint32_t file_length, char
         current_addr += read_len;
     }
 
+    // 得到16字节二进制 MD5
     app_md5_final(md5_bin, &md5_ctx);
 
     // 转成32字符十六进制字符串
     for (int i = 0; i < 16; i++) {
-        sprintf(&out_md5_str[i * 2], "%02x", md5_bin[i]);
+        sprintf(&out_md5[i * 2], "%02x", md5_bin[i]);
     }
-    out_md5_str[32] = '\0';
+    out_md5[32] = '\0'; // 字符串结束符
 
     return 0;
 }
