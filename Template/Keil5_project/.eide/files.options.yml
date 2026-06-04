@@ -15,6 +15,6 @@
 
 version: "2.1"
 options:
-    GD32F30X_HD:
+    GD32F30X:
         files: {}
         virtualPathFiles: {}

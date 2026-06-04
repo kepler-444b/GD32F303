@@ -48,6 +48,7 @@ static void handle_board_temp(cJSON *item, const char *id, mqtt_type_e type);
 static void handle_extend_state(cJSON *item, const char *id, mqtt_type_e type);
 static void handle_set_info(cJSON *item, const char *id, mqtt_type_e type);
 static void handle_soft_ver(cJSON *item, const char *id, mqtt_type_e type);
+static void handle_timer_task(cJSON *item, const char *id, mqtt_type_e type);
 
 static void app_mqtt_post(const char *topic, const char *id, const char *data);
 static void app_mqtt_set_reply(const char *topic, const char *id, const char *msg);
@@ -85,11 +86,14 @@ static bool g_report          = true;
 
 #define DISPATCH_SIZE (sizeof(dispatch_table) / sizeof(dispatch_table[0]))
 static const mqtt_dispatch_t dispatch_table[] =
-    {{"SetInfo", handle_set_info},
-     {"DevTime", handle_dev_time},
-     {"BoardTemp", handle_board_temp},
-     {"ExtendState", handle_extend_state},
-     {"SoftVer", handle_soft_ver}};
+    {
+        {"SetInfo", handle_set_info}, // 服务
+        {"DevTime", handle_dev_time},
+        {"BoardTemp", handle_board_temp},
+        {"ExtendState", handle_extend_state},
+        {"SoftVer", handle_soft_ver},
+        {"TimerTask", handle_timer_task},
+};
 
 void app_network_model_init(void)
 {
@@ -135,6 +139,7 @@ static void app_networt_status(event_type_e event, void *params)
             if (len >= 8 && memcmp(data, "SetScene", 8) == 0) {
                 app_bytes_to_string(data + 8, len - 8, msg);
                 app_public_scene_cfg_parse(msg);
+
             } else if (len >= 9 && memcmp(data, "BindScene", 9) == 0) {
                 app_bytes_to_string(data + 9, len - 9, msg);
                 app_public_bind_scene_cfg_parse(msg);
@@ -575,7 +580,8 @@ static void handle_soft_ver(cJSON *item, const char *id, mqtt_type_e type)
     switch (type) {
         case MQTT_PRO_GET: {
             const dev_save_info_t *temp_info = dev_get_save_device_info();
-            char property_buf[32];
+
+            char property_buf[32] = {0};
             snprintf(property_buf, sizeof(property_buf), "{\"SoftVer\":\"%s\"}", temp_info->cur_ver);
             app_mqtt_get_reply(mqtt_params.property_get_reply, id, property_buf);
         } break;
@@ -591,6 +597,34 @@ static void handle_soft_ver_post(void)
     const dev_save_info_t *temp_info = dev_get_save_device_info();
     snprintf(post_buf, sizeof(post_buf), "{\"SoftVer\":{\"value\":\"%s\"}}", temp_info->cur_ver);
     app_mqtt_post(mqtt_params.property_post, "000", post_buf);
+}
+
+// 定时任务
+static void handle_timer_task(cJSON *item, const char *id, mqtt_type_e type)
+{
+    switch (type) {
+        case MQTT_PRO_SET: {
+            app_public_timer_task_cfg_parse(item->valuestring);
+            app_mqtt_set_reply(mqtt_params.property_set_reply, id, NULL); // 回复ACK
+        } break;
+        case MQTT_PRO_GET: {
+            const timer_task_t *temp_info = app_public_get_timer_task();
+
+            char get_buf[160] = {0};
+            char *p_data      = get_buf;
+
+            p_data += sprintf(p_data, "{\"TimerTask\":\"");
+            for (uint8_t i = 0; i < TIMER_TASK_MAX; i++) {
+                p_data += sprintf(p_data, "%02d%02d%02d%02d%02d%02d", i, temp_info[i].scene_id, temp_info[i].enable, temp_info[i].hour, temp_info[i].min, temp_info[i].reserve);
+            }
+            sprintf(p_data, "\"}");
+            APP_PRINTF("upload json:%s\n", get_buf);
+            app_mqtt_get_reply(mqtt_params.property_get_reply, id, get_buf);
+
+        } break;
+        default:
+            break;
+    }
 }
 
 // 扩展状态
@@ -655,6 +689,7 @@ static void handle_board_temp_post(float temp)
 // 服务类
 static void handle_set_info(cJSON *item, const char *id, mqtt_type_e type)
 {
+#if 0
     if (type != MQTT_SERVICE) { // 不是服务类型,直接退出
         return;
     }
@@ -693,6 +728,51 @@ static void handle_set_info(cJSON *item, const char *id, mqtt_type_e type)
     else if (strncmp(msg, "DelConfig", strlen("DelConfig")) == 0) {
         const char *del_cfg_param = msg + strlen("DelConfig");
         app_public_del_cfg(del_cfg_param);
+    } // 设备重启
+    else if (strncmp(msg, "DeviceReset", strlen("DeviceReset")) == 0) {
+        app_mqtt_service_reply(mqtt_params.service_invoke_reply, id, NULL);
+        delay_1ms(100);
+        NVIC_SystemReset(); // 重启系统
+    }
+    app_mqtt_service_reply(mqtt_params.service_invoke_reply, id, NULL);
+
+#endif
+    if (type != MQTT_SERVICE || item == NULL || item->valuestring == NULL) {
+        return;
+    }
+    const char *msg = item->valuestring;
+
+    // 检查更新
+    if (strncmp(msg, "SoftUpdate", strlen("SoftUpdate")) == 0) {
+        g_report = false;
+        app_timer_start(500, app_network_http_task, true, NULL, "http_task");
+    }
+    // 设置场景
+    else if (strncmp(msg, "SetScene", strlen("SetScene")) == 0) {
+        app_public_scene_cfg_parse(msg + strlen("SetScene"));
+    }
+    // 绑定场景
+    else if (strncmp(msg, "BindScene", strlen("BindScene")) == 0) {
+        app_public_bind_scene_cfg_parse(msg + strlen("BindScene"));
+    }
+    // 绑定群组
+    else if (strncmp(msg, "BindGroup", strlen("BindGroup")) == 0) {
+        app_public_bind_group_cfg_parse(msg + strlen("BindGroup"));
+    }
+    // 执行场景
+    else if (strncmp(msg, "ExeScene", strlen("ExeScene")) == 0) {
+        app_public_exe_scene(msg + strlen("ExeScene"));
+    }
+    // 删除配置
+    else if (strncmp(msg, "DelConfig", strlen("DelConfig")) == 0) {
+        app_public_del_cfg(msg + strlen("DelConfig"));
+    }
+    // 设备重启
+    else if (strcmp(msg, "DeviceReset") == 0) {
+        app_mqtt_service_reply(mqtt_params.service_invoke_reply, id, NULL);
+        delay_1ms(100);
+        NVIC_SystemReset();
+        return;
     }
     app_mqtt_service_reply(mqtt_params.service_invoke_reply, id, NULL);
 }

@@ -30,18 +30,19 @@ static void app_usart0_check(usart0_rx_buf_t *buf)
     if (buf->buffer[buf->length - 2] != USART0_FT_1 || buf->buffer[buf->length - 1] != USART0_FT_2) { // 检查帧尾
         return;
     }
-    uint8_t cmd = buf->buffer[2];
+    uint8_t cmd       = buf->buffer[3];
+    uint16_t length   = buf->buffer[2];
+    uint8_t *playload = &buf->buffer[4];
 
-    static type_c_rx_t evt_buf;                                               // 这里需要重新使用一个静态区域,以使用evenbus
-    uint16_t data_len = buf->length - 5;                                      // 去掉帧头帧尾
-    if (data_len > sizeof(evt_buf.buffer)) data_len = sizeof(evt_buf.buffer); // 防止溢出
-    memcpy(&evt_buf, &buf->buffer[3], data_len);
-    evt_buf.length = data_len;
+    static type_c_rx_t evt_buf; // 这里需要重新使用一个静态区域,以使用evenbus
+    memcpy(evt_buf.buffer, playload, length);
+    evt_buf.length = length;
 
     if (cmd == SET_INFO) {
         app_eventbus_publish(EVENT_USART0_SET, &evt_buf);
+
     } else if (cmd == CFG_INFO) {
-        app_eventbus_publish(EVENT_USART0_CFG, &evt_buf);
+        app_eventbus_publish(EVENT_USART0_CFG, &evt_buf); 
     }
 }
 

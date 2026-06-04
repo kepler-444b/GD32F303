@@ -3,22 +3,32 @@
 
 #include <stdint.h>
 
-#define PANEL_INFO_SIZE     40  // 面板配置信息字节数
-#define BIND_INFO_SIZE      139 // 绑定信息的字节数
+#define SCENE_INFO_SIZE      185 // 设置场景信息字节数
+#define BIND_SCENE_INFO_SIZE 6   // 绑定场景信息字节数
+#define BIND_GROUP_INFO_SIZE 11  // 绑定群组信息字节数
+#define TIMER_TASK_INFO_SIZE 60  // 定时任务信息字节数
 
-#define SCENE_INFO_SIZE     185
+#define BIND_SCENE_MAX       128 // 绑定场景最大个数
+#define SCENE_ID_MAX         128 // 场景ID最大个数
+#define BIND_GROUP_MAX       18  // 绑定群组最大个数
+#define TIMER_TASK_MAX       10  // 定时任务最大个数
 
-#define BIND_INFO_DONE_SIZE 16 // 绑定信息完成字节数
-#define SCENE_INFO_DONE_SIZE
+#define PANEL_DEV_MAX        32 // 面板最大个数
+#define KEY_NUMBER           6  // 按键最大个数
 
-#define BIND_SCENE_MAX 128 // 绑定场景最大个数
-#define SCENE_ID_MAX   128 // 场景ID最大个数
-#define GROUP_ID_MAX   18  // 绑定群组最大个数
-#define PANEL_DEV_MAX  32  // 面板最大个数
-#define KEY_NUMBER     6   // 按键最大个数
+#define RELAY_NUM_MAX        18
+#define LED_NUM_MAX          32
 
-#define RELAY_NUM_MAX  18
-#define LED_NUM_MAX    32
+// 定时任务结构体
+typedef struct {
+    uint8_t scene_id;
+    uint8_t enable;
+    uint8_t hour;
+    uint8_t min;
+    uint8_t reserve;
+    uint8_t padding;
+
+} timer_task_t;
 
 // 场景结构体
 typedef struct {
@@ -54,6 +64,7 @@ typedef struct {
 void app_public_cfg_init(void);
 
 void app_set_scene_cfg(const uint8_t *cfg, uint16_t len);
+void app_set_timer_task_cfg(const uint8_t *cfg, uint16_t len);
 
 void app_set_bind_scene_cfg(const uint8_t *cfg, uint16_t len);
 void app_set_bind_group_cfg(const uint8_t *cfg, uint16_t len);
@@ -69,5 +80,7 @@ const uint8_t app_public_get_active_group_bind(void);
 
 const scene_id_t *app_public_get_scene(void);
 const uint8_t app_public_get_active_scene(void);
+
+const timer_task_t *app_public_get_timer_task(void);
 
 #endif

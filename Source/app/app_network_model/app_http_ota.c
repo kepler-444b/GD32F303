@@ -209,7 +209,6 @@ static void timer_do_ota(void *arg)
                     download_step = 0;
                 }
             }
-
             break;
         }
         case OTA_REPORT_OK: { // 上报升级成功
@@ -428,9 +427,3 @@ static uint16_t app_ota_post_status(uint8_t *buf, uint16_t buf_size, uint32_t ti
 
     return (uint16_t)strlen((char *)buf);
 }
-
-// uint8_t app_ota_get_flag(void)
-// {
-//     // APP_PRINTF("ota_flag:%d\n", ota_flag);
-//     return ota_flag;
-// }

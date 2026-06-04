@@ -79,12 +79,11 @@ typedef struct {
 
 void app_public_protocol_init(void);
 void app_public_scene_cfg_parse(const char *str);
+void app_public_timer_task_cfg_parse(const char *str);
 void app_public_bind_scene_cfg_parse(const char *str);
 void app_public_bind_group_cfg_parse(const char *str);
 void app_puublic_set_extend(const char *str);
 void app_public_exe_scene(const char *str);
 void app_public_del_cfg(const char *str);
-
-
 
 #endif

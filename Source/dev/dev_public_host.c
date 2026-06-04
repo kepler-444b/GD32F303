@@ -119,7 +119,7 @@ static void dev_display_key_check(void)
     static uint16_t last_avg = 0xFFFF;
 
     uint16_t raw_vol = bsp_adc_read_key();
-    // APP_PRINTF("raw_vol:%d\n", raw_vol);
+    // APP_PRINTF("raw_vol:%d\n", raw_vol); 
     // 无按键
     if (raw_vol > NO_KEY_VOL) {
         if (last_avg != 0xFFFF) {

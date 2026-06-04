@@ -50,11 +50,14 @@ static void dev_nw_cfg_protocol_check(type_c_rx_t *buf)
     // 获取设备信息
     if (buf->buffer[0] == 0x01 && buf->buffer[1] == 0x02 && buf->buffer[2] == 0x03) {
         dev_packet_t packet;
+        packet.fh_1 = 0xFE;
+        packet.fh_2 = 0xBB;
         memcpy(&packet.net, &my_nw_info, sizeof(wiz_NetInfo));
         memcpy(packet.devices, my_dev_save_info.devices, sizeof(packet.devices));
         memcpy(packet.cur_ver, my_dev_save_info.cur_ver, sizeof(packet.cur_ver));
         memcpy(packet.key, my_dev_save_info.key, sizeof(packet.key));
-
+        packet.ft_1 = 0x0D;
+        packet.ft_2 = 0x0A;
         bsp_usart_tx_buf((const uint8_t *)&packet, sizeof(packet), USART0);
     }
     // 接收网络信息

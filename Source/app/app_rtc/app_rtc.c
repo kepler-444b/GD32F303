@@ -33,6 +33,8 @@ static void app_rtc_date_to_unix(rtc_ex_time_t *t, uint32_t *timestamp);
 void app_rtc_ex_init(void)
 {
     APP_PRINTF("[app_rtc_ex_init] ================================\n");
+    app_eventbus_publish(EVENT_STANDARD_TIME, NULL); // 初始化的时候强制校准时间
+
     bsp_i2c_init(I2C0, RTC_ADDR); // 初始化 i2c 接口
 
     uint8_t status = 0;
@@ -47,9 +49,9 @@ void app_rtc_ex_init(void)
     }
     if (BIT0(status)) {
         APP_PRINTF("VLF = 1,low voltage \n"); // 检测到掉电,时间可能已经不准
-        app_eventbus_publish(EVENT_STANDARD_TIME, NULL);
+        // app_eventbus_publish(EVENT_STANDARD_TIME, NULL);
     }
-    app_eventbus_publish(EVENT_STANDARD_TIME, NULL);
+
     // 清除标志为
     bsp_i2c_write(I2C0, RTC_ADDR, STATE_REG, (1 << 1));
     bsp_i2c_write(I2C0, RTC_ADDR, STATE_REG, (1 << 0));
@@ -122,6 +124,16 @@ void rct_get_unix_time(uint32_t *time)
     rtc_ex_time_t t;
     rtc_ex_get_time(&t);
     app_rtc_date_to_unix(&t, time);
+}
+
+// 获取结构体类型的时间
+void rtc_get_struct_time(rtc_ex_time_t *t)
+{
+    if (t == NULL) {
+        return;
+    }
+
+    rtc_ex_get_time(t);
 }
 
 // 通过 nuix 设置时间

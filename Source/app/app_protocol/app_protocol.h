@@ -2,8 +2,8 @@
 #define _APP_PROTOCOL_H_
 
 void app_uart_init_all(void);
-#define USART0_FH_1 0xFA
-#define USART0_FH_2 0xFB
+#define USART0_FH_1 0xFF
+#define USART0_FH_2 0xAA
 
 #define USART0_FT_1 0x0D
 #define USART0_FT_2 0x0A

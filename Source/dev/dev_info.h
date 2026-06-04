@@ -26,10 +26,14 @@ typedef struct
 
 typedef struct
 {
+    uint8_t fh_1;
+    uint8_t fh_2;
     wiz_NetInfo net;
     char devices[32];
     char key[128];
     char cur_ver[16];
+    uint8_t ft_1;
+    uint8_t ft_2;
 
 } dev_packet_t;
 

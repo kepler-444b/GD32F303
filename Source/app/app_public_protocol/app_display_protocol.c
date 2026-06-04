@@ -57,7 +57,7 @@ void app_display_init(void)
     menu.sub_index  = 0;
 }
 
-// ==================== 按键接收 ====================
+// 按键接收
 void app_display_recv_key(uint8_t key_num)
 {
     if (key_num < sizeof(key_handlers) / sizeof(key_handlers[0])) {
@@ -66,7 +66,7 @@ void app_display_recv_key(uint8_t key_num)
     app_display_wake_up();
 }
 
-// ==================== 页面切换核心 ====================
+// 页面切换核心
 static void app_display_send_page(uint16_t page)
 {
     display_data_t disp = {0};
@@ -242,10 +242,35 @@ void app_display_connect_changed(bool connect)
     bsp_usart_tx_buf(tx_buf, app_display_build_frame(&disp, tx_buf), USART1);
 
     // IP 地址
-    disp.addr    = 0x1102;
-    disp.data[0] = 0x1102;
-    memcpy(&disp.data[1], nw->ip, 4);
-    disp.data_len = 5;
+    disp.addr = 0x1102;
+    for (uint8_t i = 0; i < 4; i++) {
+        disp.data[i] = nw->ip[i];
+    }
+    disp.data_len = 4;
+    bsp_usart_tx_buf(tx_buf, app_display_build_frame(&disp, tx_buf), USART1);
+
+    // 网关
+    disp.addr = 0x1202;
+    for (uint8_t i = 0; i < 4; i++) {
+        disp.data[i] = nw->gw[i];
+    }
+    disp.data_len = 4;
+    bsp_usart_tx_buf(tx_buf, app_display_build_frame(&disp, tx_buf), USART1);
+
+    // SN
+    disp.addr = 0x1302;
+    for (uint8_t i = 0; i < 4; i++) {
+        disp.data[i] = nw->sn[i];
+    }
+    disp.data_len = 4;
+    bsp_usart_tx_buf(tx_buf, app_display_build_frame(&disp, tx_buf), USART1);
+
+    // DNS
+    disp.addr = 0x1402;
+    for (uint8_t i = 0; i < 4; i++) {
+        disp.data[i] = nw->dns[i];
+    }
+    disp.data_len = 4;
     bsp_usart_tx_buf(tx_buf, app_display_build_frame(&disp, tx_buf), USART1);
 
     // DHCP 状态
@@ -350,6 +375,23 @@ void app_display_resource_icon(void)
     bsp_usart_tx_buf(tx_buf, app_display_build_frame(&disp, tx_buf), USART1);
 }
 
+// 唤醒屏幕
+static void app_display_wake_up(void)
+{
+    display_data_t disp = {0};
+
+    disp.cmd      = 0x10;
+    disp.has_addr = true;
+    disp.addr     = 0x7001;
+    disp.data[0]  = 0x0063;
+    disp.data_len = 1;
+
+    uint8_t tx_buf[32];
+    uint16_t len = app_display_build_frame(&disp, tx_buf);
+
+    bsp_usart_tx_buf(tx_buf, 10, USART1);
+}
+
 // 组帧函数
 static uint16_t app_display_build_frame(display_data_t *data, uint8_t *tx_buf)
 {
@@ -376,10 +418,4 @@ static uint16_t app_display_build_frame(display_data_t *data, uint8_t *tx_buf)
     tx_buf[index++] = crc >> 8;
 
     return index;
-}
-
-static void app_display_wake_up(void)
-{
-    uint8_t tx_buf[10] = {0x5A, 0xA5, 0x07, 0x10, 0x70, 0x01, 0x00, 0x63, 0x6E, 0xDE};
-    bsp_usart_tx_buf(tx_buf, 10, USART1);
 }

@@ -13,8 +13,9 @@ virtualFolder:
         - path: ../gd32f30x_it.c
         - path: ../main.c
         - path: ../systick.c
-        - path: ../main.h
         - path: ../gd32f30x_it.h
+        - path: ../gd32f30x_libopt.h
+        - path: ../main.h
         - path: ../systick.h
       folders: []
     - name: CMSIS
@@ -83,24 +84,22 @@ virtualFolder:
         - path: ../../Source/app/app_public_config/app_public_config.h
         - path: ../../Source/app/app_base/app_base.c
         - path: ../../Source/app/app_base/app_base.h
-        - path: ../../Source/app/app_dns_model/app_dns_model.c
-        - path: ../../Source/app/app_dns_model/app_dns_model.h
-        - path: ../../Source/app/app_network_model/app_network_model.c
-        - path: ../../Source/app/app_network_model/app_network_model.h
         - path: ../../Source/app/app_network_model/app_http_ota.c
         - path: ../../Source/app/app_network_model/app_http_ota.h
-        - path: ../../Source/app/app_network_model/app_network_info.h
+        - path: ../../Source/app/app_network_model/app_network_model.c
+        - path: ../../Source/app/app_network_model/app_network_model.h
         - path: ../../Source/app/app_md5/app_md5.c
         - path: ../../Source/app/app_md5/app_md5.h
         - path: ../../Source/app/app_token/app_token.c
         - path: ../../Source/app/app_token/app_token.h
-        - path: ../../Source/app/app_public_protocol/app_display_protocol.c
-        - path: ../../Source/app/app_public_protocol/app_display_protocol.h
-        - path: ../../Source/app/app_rtc/app_rtc.c
-        - path: ../../Source/app/app_rtc/app_rtc.h
-        - path: ../../Source/app/app_public_protocol/app_public.h
         - path: ../../Source/app/app_watchdog/app_watchdog.c
         - path: ../../Source/app/app_watchdog/app_watchdog.h
+        - path: ../../Source/app/app_public_protocol/app_display_protocol.c
+        - path: ../../Source/app/app_public_protocol/app_display_protocol.h
+        - path: ../../Source/app/app_public_protocol/app_public.h
+        - path: ../../Source/app/app_network_model/app_network_info.h
+        - path: ../../Source/app/app_rtc/app_rtc.c
+        - path: ../../Source/app/app_rtc/app_rtc.h
       folders: []
     - name: Bsp
       files:
@@ -114,10 +113,10 @@ virtualFolder:
         - path: ../../Source/bsp/bsp_flash/bsp_flash.h
         - path: ../../Source/bsp/bsp_adc/bsp_adc.c
         - path: ../../Source/bsp/bsp_adc/bsp_adc.h
-        - path: ../../Source/bsp/bsp_i2c/bsp_i2c.c
-        - path: ../../Source/bsp/bsp_i2c/bsp_i2c.h
         - path: ../../Source/bsp/bsp_board/bsp_board.c
         - path: ../../Source/bsp/bsp_board/bsp_board.h
+        - path: ../../Source/bsp/bsp_i2c/bsp_i2c.c
+        - path: ../../Source/bsp/bsp_i2c/bsp_i2c.h
       folders: []
     - name: Ethernet
       files:
@@ -180,9 +179,9 @@ virtualFolder:
 dependenceList: []
 outDir: build
 miscInfo:
-  uid: 217011e976fdaec97e30211f0afa2f1b
+  uid: 88d5b6e220c6d9e2681d2829c6d1b6c0
 targets:
-  GD32F30X_HD:
+  GD32F30X:
     cppPreprocessAttrs:
       defineList:
         - USE_STDPERIPH_DRIVER
@@ -194,7 +193,7 @@ targets:
         - ../../Utilities
         - ..
         - .cmsis/include
-        - RTE/_GD32F30X_HD
+        - RTE/_GD32F30X
       libList: []
     excludeList:
       - <virtual_root>/Startup/startup_gd32f30x_cl.s
@@ -228,9 +227,9 @@ targets:
               - .s19
             misc-controls: --diag_suppress=L6329
             output-format: elf
-            ro-base: "0x08000000"
+            ro-base: "0x08004000"
             rw-base: "0x20000000"
-        scatterFilePath: ""
+        scatterFilePath: output/Project.sct
         storageLayout:
           RAM:
             - id: 1
@@ -257,7 +256,7 @@ targets:
             - id: 1
               isChecked: true
               mem:
-                size: "0xc000"
+                size: "0x10000"
                 startAddr: "0x20000000"
               noInit: false
               tag: IRAM
@@ -294,8 +293,8 @@ targets:
               isChecked: true
               isStartup: true
               mem:
-                size: "0x1C000"
-                startAddr: "0x8004000"
+                size: "0x32000"
+                startAddr: "0x08004000"
               tag: IROM
             - id: 2
               isChecked: false
@@ -310,7 +309,7 @@ targets:
         baseAddr: ""
         bin: ""
         cpuInfo:
-          cpuName: GD32F303VCT6
+          cpuName: GD32F303VET6
           vendor: GigaDevice
         otherCmds: ""
         proType: 1

@@ -17,4 +17,6 @@ void app_rtc_ex_init(void);
 void rct_get_unix_time(uint32_t *time);
 void rct_set_unix_time(const uint32_t time);
 
+void rtc_get_struct_time(rtc_ex_time_t *t);
+
 #endif

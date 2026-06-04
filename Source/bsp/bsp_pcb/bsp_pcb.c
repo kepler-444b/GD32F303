@@ -2,7 +2,7 @@
 
 // type-c 接口
 void pcb_usart0_init(void)
-{ 
+{
     rcu_periph_clock_enable(RCU_GPIOA);
     rcu_periph_clock_enable(RCU_USART0);
 

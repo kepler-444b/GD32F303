@@ -1,5 +1,7 @@
 #include "app_public_protocol.h"
 #include "../Source/app/app_base/app_base.h"
+#include "../Source/app/app_timer/app_timer.h"
+#include "../Source/app/app_rtc/app_rtc.h"
 #include "../Source/bsp/bsp_usart/bsp_usart.h"
 #include "../Source/app/app_evenbus/app_eventbus.h"
 #include "../Source/app/app_protocol/app_protocol.h"
@@ -20,6 +22,7 @@ static void app_build_extend_frame(void);
 static void app_build_panel_frame(void);
 
 static void app_public_event_handler(event_type_e event, void *params);
+static void app_public_timer_task(void *arg);
 
 static panel_full_status_t my_panel_full_status; //  存储设备状态信息
 static panel_src_info_t my_panel_status;         //  面板上报数据
@@ -32,9 +35,27 @@ static panel_tx_buf_t my_panel_tx_buf;   // 发送给面板设备的数据帧
 
 void app_public_protocol_init(void)
 {
-    app_uart_init_all(); // 初始化设备所用串口
-    app_public_cfg_init();
+    app_uart_init_all();   // 初始化设备所用串口
+    app_public_cfg_init(); // 加载设备信息
+    app_timer_start(30000, app_public_timer_task, true, NULL, "timer_task");
     app_eventbus_subscribe(app_public_event_handler);
+}
+
+// 定时任务回调函数
+static void app_public_timer_task(void *arg)
+{
+    rtc_ex_time_t now_time;
+    rtc_get_struct_time(&now_time);
+    const timer_task_t *temp_task = app_public_get_timer_task();
+
+    for (uint8_t i = 0; i < TIMER_TASK_MAX; i++) {
+        if (temp_task[i].hour == now_time.hour &&
+            temp_task[i].min == now_time.min &&
+            temp_task[i].enable == true) {
+            app_public_exe_scene_by_sid(temp_task[i].scene_id);
+            APP_PRINTF("timer task exe id:%d scene_id:%d", i, temp_task[i].scene_id);
+        }
+    }
 }
 
 static void app_public_event_handler(event_type_e event, void *params)
@@ -76,7 +97,7 @@ static void app_panel_protocol_check(usart2_rx_buf_t *buf)
             const bind_group_t *binds       = app_public_get_bind_group();
             const uint8_t active_group_bind = app_public_get_active_group_bind();
 
-            static uint8_t last_lum[GROUP_ID_MAX] = {0};
+            static uint8_t last_lum[BIND_GROUP_MAX] = {0};
 
             for (uint8_t i = 0; i < active_group_bind; i++) {
                 if (binds->addr == binds[i].addr) { // 匹配上绑定的群组
@@ -242,7 +263,6 @@ void app_display_exe_scene(uint8_t scene_id)
 // 删除配置信息
 void app_public_del_cfg(const char *str)
 {
-    APP_PRINTF("%s\n", str);
     if (strcmp(str, "DelScene") == 0) { // 删除场景信息
         app_del_scene_cfg();
     } else if (strcmp(str, "DelBind") == 0) { // 删除绑定信息
@@ -253,16 +273,16 @@ void app_public_del_cfg(const char *str)
 // 绑定场景
 void app_public_bind_scene_cfg_parse(const char *str)
 {
-    static uint8_t bind_info[10];
-    uint16_t buf_len = app_string_to_bytes(str, bind_info, 10);
+    static uint8_t bind_info[BIND_SCENE_INFO_SIZE];
+    uint16_t buf_len = app_string_to_bytes(str, bind_info, BIND_SCENE_INFO_SIZE);
     app_set_bind_scene_cfg(bind_info, buf_len);
 }
 
 // 绑定群组
 void app_public_bind_group_cfg_parse(const char *str)
 {
-    static uint8_t bind_info[24];
-    uint16_t buf_len = app_string_to_bytes(str, bind_info, 24);
+    static uint8_t bind_info[BIND_GROUP_INFO_SIZE];
+    uint16_t buf_len = app_string_to_bytes(str, bind_info, BIND_GROUP_INFO_SIZE);
     app_set_bind_group_cfg(bind_info, buf_len);
 }
 
@@ -270,10 +290,16 @@ void app_public_bind_group_cfg_parse(const char *str)
 void app_public_scene_cfg_parse(const char *str)
 {
     static uint8_t scene_info[SCENE_INFO_SIZE];
-    memset(scene_info, 0, SCENE_INFO_SIZE);
     uint16_t buf_len = app_string_to_bytes(str, scene_info, SCENE_INFO_SIZE);
-
     app_set_scene_cfg(scene_info, SCENE_INFO_SIZE);
+}
+
+// 设置定时任务
+void app_public_timer_task_cfg_parse(const char *str)
+{
+    static uint8_t timer_task_info[TIMER_TASK_INFO_SIZE];
+    uint16_t buf_len = app_string_to_bytes(str, timer_task_info, TIMER_TASK_INFO_SIZE);
+    app_set_timer_task_cfg(timer_task_info, TIMER_TASK_INFO_SIZE);
 }
 
 // 设置扩展状态

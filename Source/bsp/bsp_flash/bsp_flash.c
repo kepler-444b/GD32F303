@@ -10,7 +10,7 @@ __IO fmc_state_enum app_flash_write_word(uint32_t flash_start_addr, uint32_t *bu
 
     __IO uint32_t verify_passed = 1; // 1 = 成功, 0 = 失败
 
-    // 参数检查：指针不能为空，地址和长度必须 4 字节对齐
+    // 参数检查:指针不能为空,地址和长度必须 4 字节对齐
     if (!buffer || (flash_start_addr % 4) || (byte_length % 4)) {
         return FMC_PGERR;
     }
@@ -18,9 +18,7 @@ __IO fmc_state_enum app_flash_write_word(uint32_t flash_start_addr, uint32_t *bu
     fmc_unlock(); // 解锁 Flash
 
     // 清除可能存在的状态标志
-    fmc_flag_clear(FMC_FLAG_BANK0_END);
-    fmc_flag_clear(FMC_FLAG_BANK0_WPERR);
-    fmc_flag_clear(FMC_FLAG_BANK0_PGERR);
+    fmc_flag_clear(FMC_FLAG_BANK0_END | FMC_FLAG_BANK0_WPERR | FMC_FLAG_BANK0_PGERR);
 
     // 计算需要擦除的页数
     total_pages = (byte_length + (FLASH_PAGE_SIZE - 1)) / FLASH_PAGE_SIZE;
@@ -55,31 +53,29 @@ __IO fmc_state_enum app_flash_write_word(uint32_t flash_start_addr, uint32_t *bu
 __IO fmc_state_enum app_flash_write_page(uint32_t page_addr, uint32_t *buffer, uint32_t byte_length)
 {
     fmc_state_enum status = FMC_READY;
-
-    // 1. 基础对齐检查
+    // 基础对齐检查
     if ((page_addr % FLASH_PAGE_SIZE) != 0) {
         return FMC_PGERR;
     }
 
     fmc_unlock();
-
-    // 2. 关键：在操作前必须清除之前的异常状态位，否则后续指令可能被硬件忽略
+    // 在操作前必须清除之前的异常状态位，否则后续指令可能被硬件忽略
     fmc_flag_clear(FMC_FLAG_BANK0_END | FMC_FLAG_BANK0_WPERR | FMC_FLAG_BANK0_PGERR);
 
-    // 3. 执行擦除
+    // 执行擦除
     status = fmc_page_erase(page_addr);
     if (status != FMC_READY) {
         fmc_lock();
         return status;
     }
 
-    // 4. 循环写入数据
+    // 循环写入数据
     uint32_t word_len = (byte_length + 3) / 4;
     for (uint32_t i = 0; i < word_len; i++) {
-        // 直接编程，只依靠硬件返回的 status 确认是否成功
+        // 直接编程,只依靠硬件返回的 status 确认是否成功
         status = fmc_word_program(page_addr + (i * 4), buffer[i]);
 
-        // 如果硬件报错（如写保护或电压不稳），及时跳出
+        // 如果硬件报错(如写保护或电压不稳)及时跳出
         if (status != FMC_READY) break;
     }
 
@@ -109,29 +105,28 @@ __IO fmc_state_enum app_flash_erase_page(uint32_t page_addr)
 {
     fmc_state_enum status = FMC_READY;
 
-    // 1. 地址对齐检查：地址必须是页大小的整数倍
+    // 地址对齐检查:地址必须是页大小的整数倍
     if ((page_addr % FLASH_PAGE_SIZE) != 0) {
         return FMC_PGERR;
     }
 
-    // 2. 解锁 Flash 控制器
+    // 解锁 Flash 控制器
     fmc_unlock();
 
-    // 3. 关键：清除状态标志位，防止之前的错误挂起导致本次操作失效
+    // 清除状态标志位,防止之前的错误挂起导致本次操作失效
     fmc_flag_clear(FMC_FLAG_BANK0_END | FMC_FLAG_BANK0_WPERR | FMC_FLAG_BANK0_PGERR);
 
-    // 4. 执行页擦除指令
+    // 执行页擦除指令
     status = fmc_page_erase(page_addr);
 
-    // 5. 校验：擦除后 Flash 的内容应全为 0xFF
+    // 擦除后 Flash 的内容应全为 0xFF
     if (status == FMC_READY) {
         if ((*(__IO uint32_t *)page_addr) != 0xFFFFFFFF) {
             status = FMC_PGERR; // 擦除校验失败
         }
     }
 
-    // 6. 重新锁定 Flash
+    // 重新锁定 Flash
     fmc_lock();
-
     return status;
 }
