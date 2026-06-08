@@ -15,8 +15,9 @@
 
 #define RTC_ADDR        (0x32 << 1) // RTC 模块i2c地址 预移位，简化后续调用
 
-#define CTRL_REG        0x1E // 控制寄存器
 #define STATE_REG       0x1D // 状态寄存器
+#define CTRL_REG        0x1E // 控制寄存器
+#define INIEN_REG       0x1F // 控制寄存器(电池自动切换)
 
 #define SEC_REG         0x10 // 秒寄存器
 #define MIN_REG         0x11 // 分寄存器
@@ -28,57 +29,83 @@
 // 函数声明
 static void app_rtc_unix_to_date(uint32_t timestamp, rtc_ex_time_t *t);
 static void app_rtc_date_to_unix(rtc_ex_time_t *t, uint32_t *timestamp);
+static void rtc_ex_set_time(rtc_ex_time_t *t);
+static void rtc_ex_get_time(rtc_ex_time_t *t);
+static void app_rtc_display_set_time(void);
 
 // 初始化 RTC
 void app_rtc_ex_init(void)
 {
     APP_PRINTF("[app_rtc_ex_init] ================================\n");
-    app_eventbus_publish(EVENT_STANDARD_TIME, NULL); // 初始化的时候强制校准时间
 
     bsp_i2c_init(I2C0, RTC_ADDR); // 初始化 i2c 接口
+    uint8_t inien_status = 0;
+    if (!bsp_i2c_read(I2C0, RTC_ADDR, INIEN_REG, &inien_status)) {
+        APP_ERROR("RTC not found (I2C NACK)");
+        return;
+    }
+
+    inien_status |= (1 << 4); // INIEN 启用电源切换检测
+    inien_status |= (1 << 5); // CHGEN 启用电池充电
+    if (!bsp_i2c_write(I2C0, RTC_ADDR, INIEN_REG, inien_status)) {
+        APP_ERROR("Failed to write CTRL_1");
+        return;
+    }
 
     uint8_t status = 0;
-
-    if (!bsp_i2c_read(I2C0, RTC_ADDR, STATE_REG, &status)) { // 读取状态寄存器
-        APP_ERROR("RTC device not found!");
-        return; // 没有RTC设备,直接返回
+    if (!bsp_i2c_read(I2C0, RTC_ADDR, STATE_REG, &status)) {
+        APP_ERROR("Failed to read STATE_REG");
+        return;
     }
-
-    if (BIT1(status)) {
-        APP_PRINTF("VBF = 1, VDD/VBAT power switching detected\n"); // 检测到电源有过切换
+    if (BIT0(status)) { // 振荡器发生过停摆,此时时间已经不准
+        APP_PRINTF("VLF = 1, oscillator stop / low voltage detected\n");
     }
-    if (BIT0(status)) {
-        APP_PRINTF("VLF = 1,low voltage \n"); // 检测到掉电,时间可能已经不准
-        // app_eventbus_publish(EVENT_STANDARD_TIME, NULL);
+    // 清除寄存器标志位
+    if (!bsp_i2c_write(I2C0, RTC_ADDR, STATE_REG, 0x00)) {
+        APP_ERROR("Failed to clear STATE_REG");
     }
-
-    // 清除标志为
-    bsp_i2c_write(I2C0, RTC_ADDR, STATE_REG, (1 << 1));
-    bsp_i2c_write(I2C0, RTC_ADDR, STATE_REG, (1 << 0));
-
+    // 回读寄存器标志位
     uint8_t new_status = 0;
-    bsp_i2c_read(I2C0, RTC_ADDR, STATE_REG, &new_status); // 重新读取
-
-    if (BIT1(new_status)) {
-        APP_ERROR("Failed to clear VBF flag\n");
-    }
-    if (BIT0(new_status)) {
-        APP_ERROR("Failed to clear VLF flag\n");
-    }
-
-    uint8_t ctrl = 0;
-    bsp_i2c_read(I2C0, RTC_ADDR, CTRL_REG, &ctrl); // 读取控制寄存器
-
-    if (!BIT2(ctrl)) { // 如果备用电池的充电没有打开
-
-        bsp_i2c_write(I2C0, RTC_ADDR, CTRL_REG, (1 << 2)); // 开启充电
-        APP_PRINTF("Charging enabled\n");
+    bsp_i2c_read(I2C0, RTC_ADDR, STATE_REG, &new_status);
+    if (BIT0(new_status) || BIT1(new_status)) {
+        APP_ERROR("STATE flags not cleared, status=0x%02X", new_status);
     } else {
-        APP_PRINTF("Charging already enabled\n");
+        APP_PRINTF("STATE flags cleared successfully\n");
     }
+
+    app_eventbus_publish(EVENT_STANDARD_TIME, NULL);
+    app_rtc_display_set_time();
 }
 
-void rtc_ex_set_time(rtc_ex_time_t *t)
+// 获取 nuix 类型时间
+void rct_get_unix_time(uint32_t *time)
+{
+    rtc_ex_time_t t;
+    rtc_ex_get_time(&t);
+    app_rtc_date_to_unix(&t, time);
+}
+
+// 获取结构体类型的时间
+void rtc_get_struct_time(rtc_ex_time_t *t)
+{
+    if (t == NULL) {
+        return;
+    }
+    rtc_ex_get_time(t);
+}
+
+// 通过 nuix 设置时间
+void rct_set_unix_time(const uint32_t time)
+{
+    APP_PRINTF("rct_set_unix_time\n");
+    rtc_ex_time_t t;
+    app_rtc_unix_to_date(time, &t);
+    rtc_ex_set_time(&t);
+
+    app_rtc_display_set_time();
+}
+
+static void rtc_ex_set_time(rtc_ex_time_t *t)
 {
     bsp_i2c_write(I2C0, RTC_ADDR, CTRL_REG, 0x80); // 停止RTC
     bsp_i2c_write(I2C0, RTC_ADDR, SEC_REG, DEC_TO_BCD(t->sec));
@@ -91,7 +118,7 @@ void rtc_ex_set_time(rtc_ex_time_t *t)
     bsp_i2c_write(I2C0, RTC_ADDR, CTRL_REG, 0x00); // 启动RTC
 }
 
-void rtc_ex_get_time(rtc_ex_time_t *t)
+static void rtc_ex_get_time(rtc_ex_time_t *t)
 {
     uint8_t sec, min, hour, day, month, year;
 
@@ -111,42 +138,14 @@ void rtc_ex_get_time(rtc_ex_time_t *t)
     t->year  = BCD_TO_DEC(year) + 2000;
 }
 
-void rtc_test(void)
+// 设置显示屏时间
+static void app_rtc_display_set_time(void)
 {
     rtc_ex_time_t t;
     rtc_ex_get_time(&t);
-    APP_PRINTF("RTC TIME:%04d-%02d-%02d %02d:%02d:%02d\r\n", t.year, t.month, t.day, t.hour, t.min, t.sec);
-}
+    APP_PRINTF("hour:%d min:%d sec:%d\n", t.hour, t.min, t.sec);
 
-// 获取 nuix 时间
-void rct_get_unix_time(uint32_t *time)
-{
-    rtc_ex_time_t t;
-    rtc_ex_get_time(&t);
-    app_rtc_date_to_unix(&t, time);
-}
-
-// 获取结构体类型的时间
-void rtc_get_struct_time(rtc_ex_time_t *t)
-{
-    if (t == NULL) {
-        return;
-    }
-
-    rtc_ex_get_time(t);
-}
-
-// 通过 nuix 设置时间
-void rct_set_unix_time(const uint32_t time)
-{
-    rtc_ex_time_t t;
-    app_rtc_unix_to_date(time, &t);
-    rtc_ex_set_time(&t);
-    APP_PRINTF("rct_set_unix_time: %04d-%02d-%02d %02d:%02d:%02d\r\n", t.year, t.month, t.day, t.hour, t.min, t.sec);
-
-    // 同步到显示屏
     uint16_t time_arr[6];
-
     time_arr[0] = t.year % 100;
     time_arr[1] = t.month;
     time_arr[2] = t.day;
@@ -154,7 +153,7 @@ void rct_set_unix_time(const uint32_t time)
     time_arr[4] = t.min;
     time_arr[5] = t.sec;
 
-    app_display_set_time(time_arr, sizeof(time_arr) / sizeof(time_arr[0]));
+    app_display_set_time(time_arr, sizeof(time_arr) / sizeof(time_arr[0])); // 同步到显示屏
 }
 
 // 将 unix 时间转换为 rtc_ex_time_t 结构体

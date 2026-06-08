@@ -26,8 +26,7 @@ typedef struct {
     uint8_t hour;
     uint8_t min;
     uint8_t reserve;
-    uint8_t padding;
-
+    uint8_t padding; 
 } timer_task_t;
 
 // 场景结构体

@@ -4,6 +4,7 @@
 #include "../Source/bsp/bsp_usart/bsp_usart.h"
 #include "../Source/app/app_evenbus/app_eventbus.h"
 #include "../app/app_base/app_base.h"
+#include "../app/app_protocol/app_protocol.h"
 #include <string.h>
 
 // 函数声明
@@ -13,7 +14,6 @@ static bool dev_save_nw_cfg_info(void);
 
 static void dev_load_nw_cfg_info(void);
 static void dev_nw_cfg_event_handler(event_type_e event, void *params);
-static void dev_nw_cfg_protocol_check(type_c_rx_t *buf);
 
 // 全局变量
 static dev_save_info_t my_dev_save_info;
@@ -36,43 +36,31 @@ void dev_device_info_init(void)
 static void dev_nw_cfg_event_handler(event_type_e event, void *params)
 {
     switch (event) {
-        case EVENT_USART0_SET: {
-            type_c_rx_t *frame = (type_c_rx_t *)params;
-            dev_nw_cfg_protocol_check(frame);
+        case EVENT_USART0_GET_INFO: {
+            dev_nw_packet_t packet;
+            memcpy(&packet.net, &my_nw_info, sizeof(wiz_NetInfo));
+            memcpy(packet.devices, my_dev_save_info.devices, sizeof(packet.devices));
+            memcpy(packet.cur_ver, my_dev_save_info.cur_ver, sizeof(packet.cur_ver));
+            memcpy(packet.key, my_dev_save_info.key, sizeof(packet.key));
+            app_usart0_build(GET_INFO, (uint8_t *)&packet, sizeof(packet));
+        } break;
+        case EVENT_USART0_SET_INFO: {
+
+            dev_nw_packet_t *set_packet = (dev_nw_packet_t *)params;
+
+            memcpy(&my_nw_info, &set_packet->net, sizeof(my_nw_info));
+            dev_save_nw_cfg_info();
+            memcpy(&my_dev_save_info.devices, &set_packet->devices, sizeof(my_dev_save_info.devices));
+            memcpy(&my_dev_save_info.key, &set_packet->key, sizeof(my_dev_save_info.key));
+
+            if (dev_save_device_save_info() == true) {
+                delay_1ms(100);
+                NVIC_SystemReset(); // 重启系统
+            }
+
         } break;
         default:
             break;
-    }
-}
-
-static void dev_nw_cfg_protocol_check(type_c_rx_t *buf)
-{
-    // 获取设备信息
-    if (buf->buffer[0] == 0x01 && buf->buffer[1] == 0x02 && buf->buffer[2] == 0x03) {
-        dev_packet_t packet;
-        packet.fh_1 = 0xFE;
-        packet.fh_2 = 0xBB;
-        memcpy(&packet.net, &my_nw_info, sizeof(wiz_NetInfo));
-        memcpy(packet.devices, my_dev_save_info.devices, sizeof(packet.devices));
-        memcpy(packet.cur_ver, my_dev_save_info.cur_ver, sizeof(packet.cur_ver));
-        memcpy(packet.key, my_dev_save_info.key, sizeof(packet.key));
-        packet.ft_1 = 0x0D;
-        packet.ft_2 = 0x0A;
-        bsp_usart_tx_buf((const uint8_t *)&packet, sizeof(packet), USART0);
-    }
-    // 接收网络信息
-    else {
-        dev_packet_t packet;
-        memcpy(&packet, buf, sizeof(dev_packet_t));
-        memcpy(&my_nw_info, &packet.net, sizeof(my_nw_info));
-        dev_save_nw_cfg_info();
-        memcpy(&my_dev_save_info.devices, &packet.devices, sizeof(my_dev_save_info.devices));
-        memcpy(&my_dev_save_info.key, &packet.key, sizeof(my_dev_save_info.key));
-
-        if (dev_save_device_save_info() == true) {
-            delay_1ms(100);
-            NVIC_SystemReset(); // 重启系统
-        }
     }
 }
 

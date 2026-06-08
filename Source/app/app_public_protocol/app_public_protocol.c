@@ -5,7 +5,6 @@
 #include "../Source/bsp/bsp_usart/bsp_usart.h"
 #include "../Source/app/app_evenbus/app_eventbus.h"
 #include "../Source/app/app_protocol/app_protocol.h"
-#include "../Source/app/app_public_protocol/app_public_protocol.h"
 #include "../Source/app/app_public_protocol/app_public.h"
 #include "systick.h"
 #include <stdbool.h>
@@ -65,6 +64,31 @@ static void app_public_event_handler(event_type_e event, void *params)
             usart2_rx_buf_t *frame = (usart2_rx_buf_t *)params;
             app_panel_protocol_check(frame);
         } break;
+        case EVENT_USART0_GET_TIMER: {
+            const timer_task_t *temp = app_public_get_timer_task();
+            if (temp != NULL) {
+
+                uint8_t tx_buf[TIMER_TASK_MAX * 6]; // 1(index)+5字段
+                uint32_t offset = 0;
+
+                for (uint8_t i = 0; i < TIMER_TASK_MAX; i++) {
+
+                    tx_buf[offset++] = i; // index
+                    tx_buf[offset++] = temp[i].scene_id;
+                    tx_buf[offset++] = temp[i].enable;
+                    tx_buf[offset++] = temp[i].hour;
+                    tx_buf[offset++] = temp[i].min;
+                    tx_buf[offset++] = temp[i].reserve;
+                }
+
+                app_usart0_build(GET_TIMER, tx_buf, offset);
+            }
+        } break;
+        case EVENT_USART0_SET_TIMER: {
+            type_c_rx_t *temp = (type_c_rx_t *)params;
+            app_set_timer_task_cfg(temp->buffer, temp->length);
+            APP_PRINTF_BUF("temp", temp->buffer, temp->length);
+        }
         default:
             break;
     }

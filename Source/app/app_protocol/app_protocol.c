@@ -1,6 +1,6 @@
 #include "app_protocol.h"
 #include <string.h>
-#include "../Source/app/app_evenbus/app_eventbus.h"
+#include "../Source/app/app_evenbus/app_eventbus.h" 
 #include "../Source/bsp/bsp_usart/bsp_usart.h"
 
 // 函数声明
@@ -24,7 +24,7 @@ void app_uart_init_all(void)
 
 static void app_usart0_check(usart0_rx_buf_t *buf)
 {
-    if (buf->buffer[0] != USART0_FH_1 || buf->buffer[1] != USART0_FH_2) { // 检查帧头
+    if (buf->buffer[0] != USART0_RX_FH_1 || buf->buffer[1] != USART0_RX_FH_2) { // 检查帧头
         return;
     }
     if (buf->buffer[buf->length - 2] != USART0_FT_1 || buf->buffer[buf->length - 1] != USART0_FT_2) { // 检查帧尾
@@ -38,12 +38,48 @@ static void app_usart0_check(usart0_rx_buf_t *buf)
     memcpy(evt_buf.buffer, playload, length);
     evt_buf.length = length;
 
-    if (cmd == SET_INFO) {
-        app_eventbus_publish(EVENT_USART0_SET, &evt_buf);
-
-    } else if (cmd == CFG_INFO) {
-        app_eventbus_publish(EVENT_USART0_CFG, &evt_buf); 
+    switch (cmd) {
+        case GET_INFO:
+            app_eventbus_publish(EVENT_USART0_GET_INFO, &evt_buf);
+            break;
+        case SET_INFO:
+            app_eventbus_publish(EVENT_USART0_SET_INFO, &evt_buf);
+            break;
+        case SET_CFG:
+            app_eventbus_publish(EVENT_USART0_SET_CFG, &evt_buf);
+            break;
+        case GET_TIMER:
+            app_eventbus_publish(EVENT_USART0_GET_TIMER, &evt_buf);
+            break;
+        case SET_TIMER:
+            app_eventbus_publish(EVENT_USART0_SET_TIMER, &evt_buf);
+            break;
+        default:
+            break;
     }
+}
+
+void app_usart0_build(type_e type, uint8_t *data, uint8_t len)
+{
+    uint8_t build_frame[261];
+    uint16_t index = 0;
+
+    build_frame[index++] = USART0_TX_FH_1;
+    build_frame[index++] = USART0_TX_FH_2;
+
+    build_frame[index++] = len;
+
+    build_frame[index++] = (uint8_t)type;
+
+    if (data != NULL && len > 0) {
+        memcpy(&build_frame[index], data, len); // 从 Byte 4 开始拷贝
+        index += len;
+    }
+
+    build_frame[index++] = 0x0D;
+    build_frame[index++] = 0x0A;
+    APP_PRINTF_BUF("build_frame", build_frame, index);
+    bsp_usart_tx_buf(build_frame, index, USART0);
 }
 
 static void app_usart1_check(usart1_rx_buf_t *buf)

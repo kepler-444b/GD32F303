@@ -130,7 +130,7 @@ static void app_networt_status(event_type_e event, void *params)
             handle_dev_time_post();
             handle_soft_ver_post();
             break;
-        case EVENT_USART0_CFG: {
+        case EVENT_USART0_SET_CFG: {
             type_c_rx_t *temp = (type_c_rx_t *)params;
             char msg[512];
             uint8_t *data = temp->buffer;
@@ -611,14 +611,21 @@ static void handle_timer_task(cJSON *item, const char *id, mqtt_type_e type)
             const timer_task_t *temp_info = app_public_get_timer_task();
 
             char get_buf[160] = {0};
-            char *p_data      = get_buf;
+            int offset        = 0;
+            int len           = 0;
 
-            p_data += sprintf(p_data, "{\"TimerTask\":\"");
-            for (uint8_t i = 0; i < TIMER_TASK_MAX; i++) {
-                p_data += sprintf(p_data, "%02d%02d%02d%02d%02d%02d", i, temp_info[i].scene_id, temp_info[i].enable, temp_info[i].hour, temp_info[i].min, temp_info[i].reserve);
+            offset = snprintf(get_buf, sizeof(get_buf), "{\"TimerTask\":\"");
+            for (uint8_t i = 0; i < TIMER_TASK_MAX && offset < sizeof(get_buf); i++) {
+                len = snprintf(get_buf + offset, sizeof(get_buf) - offset, "%02x%02x%02x%02x%02x%02x",
+                               i, temp_info[i].scene_id, temp_info[i].enable, temp_info[i].hour, temp_info[i].min, temp_info[i].reserve);
+
+                if (len < 0 || len >= sizeof(get_buf) - offset) {
+                    APP_PRINTF("buffer overflow!\n");
+                    break;
+                }
+                offset += len;
             }
-            sprintf(p_data, "\"}");
-            APP_PRINTF("upload json:%s\n", get_buf);
+            snprintf(get_buf + offset, sizeof(get_buf) - offset, "\"}");
             app_mqtt_get_reply(mqtt_params.property_get_reply, id, get_buf);
 
         } break;
