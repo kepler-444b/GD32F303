@@ -11,6 +11,7 @@ typedef enum {
     EVENT_USART0_SET_CFG,   // 上位机配置场景绑定
     EVENT_USART0_GET_TIMER, // 上位机获取定时信息
     EVENT_USART0_SET_TIMER, // 上位机设置定时信息
+    EVENT_USART0_CAL_TIME,  // 上位机校准时间
 
     EVENT_USER_LINK_ON, // 手动联网
 

@@ -31,7 +31,6 @@ typedef enum {
 typedef enum {
     HTTP_DNS_INIT,  // 初始化 DNS
     HTTP_OTA_CHECK, // 检查OTA任务
-    HTTP_SCCESS,    // HTTP 客户端创建成功
 } http_task_e;
 
 typedef struct {

@@ -3,7 +3,10 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#define DEV_UID     0x1FFFF7E8
+
+#define UID0        0x1FFFF7E8
+#define UID1        0x1FFFF7EC
+#define UID2        0x1FFFF7F0
 
 #define BIT0(flag)  ((bool)((flag) & 0x01)) // 第0位
 #define BIT1(flag)  ((bool)((flag) & 0x02)) // 第1位

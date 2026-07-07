@@ -16,8 +16,9 @@ typedef enum {
     GET_INFO = 0x01, // 获取主机信息
     SET_INFO,        // 设置主机信息
     SET_CFG,         // 配置信息
-    GET_TIMER,       // 定时信息
-    SET_TIMER
+    GET_TIMER,       // 获取定时信息
+    SET_TIMER,       // 设置定时信息
+    CAL_TIME         // 校准时间
 } type_e;
 
 void app_usart0_build(type_e type, uint8_t *data, uint8_t len);

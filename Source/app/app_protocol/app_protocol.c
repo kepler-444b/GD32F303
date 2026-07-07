@@ -1,6 +1,6 @@
 #include "app_protocol.h"
 #include <string.h>
-#include "../Source/app/app_evenbus/app_eventbus.h" 
+#include "../Source/app/app_evenbus/app_eventbus.h"
 #include "../Source/bsp/bsp_usart/bsp_usart.h"
 
 // 函数声明
@@ -54,11 +54,15 @@ static void app_usart0_check(usart0_rx_buf_t *buf)
         case SET_TIMER:
             app_eventbus_publish(EVENT_USART0_SET_TIMER, &evt_buf);
             break;
+        case CAL_TIME:
+            app_eventbus_publish(EVENT_USART0_CAL_TIME, &evt_buf);
+            break;
         default:
             break;
     }
 }
 
+// 组帧发送给上位机
 void app_usart0_build(type_e type, uint8_t *data, uint8_t len)
 {
     uint8_t build_frame[261];
@@ -78,7 +82,7 @@ void app_usart0_build(type_e type, uint8_t *data, uint8_t len)
 
     build_frame[index++] = 0x0D;
     build_frame[index++] = 0x0A;
-    APP_PRINTF_BUF("build_frame", build_frame, index);
+    // APP_PRINTF_BUF("build_frame", build_frame, index);
     bsp_usart_tx_buf(build_frame, index, USART0);
 }
 

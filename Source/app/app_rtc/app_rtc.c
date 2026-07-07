@@ -10,8 +10,8 @@
 #include <string.h>
 
 // 宏定义
-#define DEC_TO_BCD(val) (((val) / 10) << 4 | ((val) % 10))
-#define BCD_TO_DEC(val) (((val) >> 4) * 10 + ((val) & 0x0F))
+#define DEC_TO_BCD(val) (((val) / 10) << 4 | ((val) % 10))   // 将十进制转换为BCD编码
+#define BCD_TO_DEC(val) (((val) >> 4) * 10 + ((val) & 0x0F)) // 将BCD编码转换为十进制
 
 #define RTC_ADDR        (0x32 << 1) // RTC 模块i2c地址 预移位，简化后续调用
 
@@ -22,7 +22,8 @@
 #define SEC_REG         0x10 // 秒寄存器
 #define MIN_REG         0x11 // 分寄存器
 #define HOUR_REG        0x12 // 时寄存器
-#define DAY_REG         0x13 // 天寄存器
+#define WEEK_REG        0x13 // 星期寄存器
+#define DAY_REG         0x14 // 天寄存器
 #define MONTH_REG       0x15 // 月寄存器
 #define YEAR_REG        0x16 // 年寄存器
 
@@ -97,7 +98,7 @@ void rtc_get_struct_time(rtc_ex_time_t *t)
 // 通过 nuix 设置时间
 void rct_set_unix_time(const uint32_t time)
 {
-    APP_PRINTF("rct_set_unix_time\n");
+    APP_PRINTF("rct_set_unix_time:%d\n", time);
     rtc_ex_time_t t;
     app_rtc_unix_to_date(time, &t);
     rtc_ex_set_time(&t);
@@ -136,6 +137,7 @@ static void rtc_ex_get_time(rtc_ex_time_t *t)
     t->day   = BCD_TO_DEC(day);
     t->month = BCD_TO_DEC(month);
     t->year  = BCD_TO_DEC(year) + 2000;
+    APP_PRINTF("year:%d month:%d uint8_t %d hour:%d min:%d sec:%d\n", t->year, t->month, t->day, t->hour, t->min, t->sec);
 }
 
 // 设置显示屏时间
@@ -143,7 +145,6 @@ static void app_rtc_display_set_time(void)
 {
     rtc_ex_time_t t;
     rtc_ex_get_time(&t);
-    APP_PRINTF("hour:%d min:%d sec:%d\n", t.hour, t.min, t.sec);
 
     uint16_t time_arr[6];
     time_arr[0] = t.year % 100;

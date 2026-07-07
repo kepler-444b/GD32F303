@@ -13,8 +13,7 @@ typedef struct
     uint8_t sec;
 } rtc_ex_time_t;
 
-void app_rtc_ex_init(void);
-
+void app_rtc_ex_init(void); 
 void rct_set_unix_time(const uint32_t time);
 
 void rct_get_unix_time(uint32_t *time);     // 获取unix类型的时间

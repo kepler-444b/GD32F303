@@ -9,6 +9,7 @@
 #include "systick.h"
 #include <stdbool.h>
 #include <string.h>
+#include <stdlib.h>
 
 // 函数声明
 static void app_panel_protocol_check(usart2_rx_buf_t *buf);
@@ -53,6 +54,7 @@ static void app_public_timer_task(void *arg)
             temp_task[i].enable == true) {
             app_public_exe_scene_by_sid(temp_task[i].scene_id);
             APP_PRINTF("timer task exe id:%d scene_id:%d", i, temp_task[i].scene_id);
+            return;
         }
     }
 }
@@ -87,8 +89,12 @@ static void app_public_event_handler(event_type_e event, void *params)
         case EVENT_USART0_SET_TIMER: {
             type_c_rx_t *temp = (type_c_rx_t *)params;
             app_set_timer_task_cfg(temp->buffer, temp->length);
-            APP_PRINTF_BUF("temp", temp->buffer, temp->length);
         }
+        case EVENT_USART0_CAL_TIME: {
+            type_c_rx_t *temp  = (type_c_rx_t *)params;
+            uint32_t unix_time = (uint32_t)strtoul((const char *)temp->buffer, NULL, 10);
+            rct_set_unix_time(unix_time);
+        } break;
         default:
             break;
     }
@@ -97,7 +103,8 @@ static void app_public_event_handler(event_type_e event, void *params)
 // 处理面板发来的信息
 static void app_panel_protocol_check(usart2_rx_buf_t *buf)
 {
-    // APP_PRINTF_BUF("buf", buf->buffer, buf->length);
+    APP_PRINTF_BUF("buf", buf->buffer, buf->length);
+
     if (buf->buffer[0] != PANEL_FRAME_RX_HEAD) {
         APP_ERROR("panel frame");
         return;
@@ -110,13 +117,14 @@ static void app_panel_protocol_check(usart2_rx_buf_t *buf)
         APP_ERROR("panel frame crc");
         return;
     }
-    my_panel_status.type     = buf->buffer[1];
-    my_panel_status.src_addr = buf->buffer[3]; // src_addr
-    my_panel_status.status   = buf->buffer[5]; // status
-    my_panel_status.key_num  = buf->buffer[6]; // key_num
-    my_panel_status.reserve  = buf->buffer[7]; // reserve
+    uint8_t data_type = buf->buffer[1]; // 数据类型(按键:0x01,旋钮:0x02)
 
-    switch (my_panel_status.type) {
+    my_panel_status.src_addr  = buf->buffer[3]; // 面板地址
+    my_panel_status.status    = buf->buffer[5]; // 面板类型
+    my_panel_status.key_num   = buf->buffer[6]; // 按键号
+    my_panel_status.reserve_1 = buf->buffer[7]; // 保留/旋钮数据
+
+    switch (data_type) {
         case KNOB: {
             const bind_group_t *binds       = app_public_get_bind_group();
             const uint8_t active_group_bind = app_public_get_active_group_bind();
@@ -125,23 +133,21 @@ static void app_panel_protocol_check(usart2_rx_buf_t *buf)
 
             for (uint8_t i = 0; i < active_group_bind; i++) {
                 if (binds->addr == binds[i].addr) { // 匹配上绑定的群组
-                    app_build_extend_frame_by_gaddr(binds[i].addr, my_panel_status.reserve);
+                    app_build_extend_frame_by_gaddr(binds[i].addr, my_panel_status.reserve_1);
                     app_display_resource_icon();
                 }
             }
         } break;
         case KEY: {
-            // 根据上报的 status 和 key_num 计算出上报按键的状态
-            my_panel_status.key_status = (my_panel_status.status >> my_panel_status.key_num) & 0x01;
-            // APP_PRINTF("src_addr:%02X key_num:%02X key_status:%02X\n", my_panel_status.src_addr, my_panel_status.key_num, my_panel_status.key_status);
-
+            // 根据上报的 面板状态 和 按键号 计算出上报按键的状态
+            bool key_status                 = (my_panel_status.status >> my_panel_status.key_num) & 0x01;
             const bind_scene_t *binds       = app_public_get_bind_scene();         // 获取绑定信息
             const uint8_t active_scene_bind = app_ppublic_get_active_scene_bind(); // 获取激活的绑定信息条目
 
             for (uint8_t i = 0; i < active_scene_bind; i++) {
                 if (binds[i].addr == my_panel_status.src_addr &&
                     binds[i].key_num == my_panel_status.key_num &&
-                    binds[i].status == my_panel_status.key_status &&
+                    binds[i].status == key_status &&
                     binds[i].scene_id != 0xFF) {
                     app_public_exe_scene_by_sid(binds[i].scene_id);
                 }
@@ -166,7 +172,7 @@ static void app_build_panel_frame_by_sid(uint8_t id)
         for (uint8_t j = 0; j < PANEL_DEV_MAX; j++) {
             // 遍历 0~5 位
             uint8_t sub_idx  = j / 8; // 在哪个 sub_frame 中
-            uint8_t addr_idx = j % 8; // 在该 sub_frame 中的第几个地址
+            // uint8_t addr_idx = j % 8; // 在该 sub_frame 中的第几个地址
 
             for (uint8_t bit = 0; bit <= 5; bit++) {
                 // 如果 ctrl 的该位被勾选,则赋值 status 对应位

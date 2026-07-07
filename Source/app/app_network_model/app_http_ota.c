@@ -43,7 +43,7 @@ void app_ota_check(httpconn *http_params, dev_save_info_t *dev, uint8_t *shared_
     APP_PRINTF("================= [app_ota_check] =================\n");
     if (ota_flag != OTA_IDLE) {
         APP_PRINTF("ota_flag:%d\n", ota_flag);
-        APP_ERROR("ota_flag ids not OTA_IDLE!");
+        APP_ERROR("ota_flag is not OTA_IDLE!");
         return;
     }
     is_report = report;

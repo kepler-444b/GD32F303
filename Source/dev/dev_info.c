@@ -73,7 +73,11 @@ static void dev_load_nw_cfg_info(void)
     if (status == FMC_READY) {
         if (my_nw_info.ip[0] == 0xFF) {
             memcpy(my_nw_info.ip, default_ip, sizeof(my_nw_info.ip)); // IP
+        }
+        if (my_nw_info.gw[0] == 0xFF) {
             memcpy(my_nw_info.gw, default_gw, sizeof(my_nw_info.gw)); // WG
+        }
+        if (my_nw_info.dhcp == 0xFF) {
             my_nw_info.dhcp = NETINFO_STATIC;
         }
         APP_PRINTF("dev_load_nw_cfg success!\n");
@@ -81,11 +85,16 @@ static void dev_load_nw_cfg_info(void)
         APP_ERROR("dev_load_nw_cfg error\n");
     }
 
-    uint8_t default_mac[12] = {0x00, 0x08, 0xDC, 0x12, 0x22, 0x12};
-    app_get_uid(default_mac);
-    default_mac[0] = default_mac[0] & 0xFE; // 强制将第一个字节的最低位设为0,确保是单播地址
-    APP_PRINTF_BUF("mac", default_mac, 6);
-    memcpy(my_nw_info.mac, default_mac, 6); // MAC 固定
+    uint8_t dev_uid[12] = {0};
+    app_get_uid(dev_uid);
+
+    uint8_t dev_mac[6] = {0};
+    memcpy(dev_mac, &dev_uid[6], sizeof(dev_mac)); // 使用UID的后6个字节作为MAC
+
+    dev_mac[0] &= 0xFE; // 强制将第一个字节的最低位设为0,确保是单播地址
+
+    APP_PRINTF_BUF("dev_mac", dev_mac, 6);
+    memcpy(my_nw_info.mac, dev_mac, 6); // MAC 固定
     if (my_nw_info.dhcp == NETINFO_STATIC) {
         memcpy(my_nw_info.dns, default_dns, sizeof(default_dns)); // DNS
         memcpy(my_nw_info.sn, default_sn, sizeof(default_sn));    // SN

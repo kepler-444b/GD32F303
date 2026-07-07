@@ -28,14 +28,11 @@ typedef enum {
 // 面板上报的信息
 typedef struct
 {
-    uint8_t type;     // 报文类型(按键:0x01,旋钮:0x02)
-    uint8_t src_addr; // 面板地址
-    uint8_t level;    // 触发类型
-    uint8_t status;   // 面板状态(上报面板状态)
-    uint8_t key_num;  // 按键编号(上报按键编号)
-    bool key_status;  // 按键状态(上报按键状态)
-    uint8_t reserve;  // 保留值(旋钮值)
-    uint8_t reserve_1;
+    uint8_t src_addr;  // 面板地址
+    uint8_t level;     // 触发类型
+    uint8_t status;    // 面板状态(上报面板状态)
+    uint8_t key_num;   // 按键编号(上报按键编号)
+    uint8_t reserve_1; // 保留值(旋钮值)
     uint8_t reserve_2;
 } panel_src_info_t;
 

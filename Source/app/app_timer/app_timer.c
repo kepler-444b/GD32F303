@@ -65,12 +65,12 @@ void app_timer_init(void)
 }
 
 void TIMER6_IRQHandler(void)
-{
+{ 
     if (timer_interrupt_flag_get(TIMER6, TIMER_INT_FLAG_UP)) {
         timer_interrupt_flag_clear(TIMER6, TIMER_INT_FLAG_UP);
         system_ticks++;
 
-        // 遍历定时器，标记到期事件
+        // 遍历定时器,标记到期事件
         for (uint8_t i = 0; i < MAX_SOFT_TIMERS; i++) {
             if (my_soft_timer[i].state != TIMER_STATE_ACTIVE)
                 continue;
@@ -157,7 +157,7 @@ void app_timer_poll(void)
         if (t->state == TIMER_STATE_INACTIVE) // 回调中可能手动停止定时器,如果被置为 INACTIVE,则不再做后续周期处理
             continue;
 
-        if (t->repeat) { // 周期性定时器：重新激活，并记录当前起点
+        if (t->repeat) { // 周期性定时器：重新激活,并记录当前起点
             t->start_time = system_ticks;
             t->state      = TIMER_STATE_ACTIVE;
         } else { // 单次定时器：到期后标记为失效

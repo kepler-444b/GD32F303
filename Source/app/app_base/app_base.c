@@ -151,8 +151,26 @@ uint16_t app_crc_16(const uint8_t *buf, uint16_t len)
 
 void app_get_uid(uint8_t uid[12])
 {
-    uint8_t *p = (uint8_t *)DEV_UID;
-    for (uint8_t i = 0; i < 12; i++) {
-        uid[i] = p[i];
-    }
+    uint32_t uid0;
+    uint32_t uid1;
+    uint32_t uid2;
+
+    uid0 = *(volatile uint32_t *)UID0;
+    uid1 = *(volatile uint32_t *)UID1;
+    uid2 = *(volatile uint32_t *)UID2;
+
+    uid[0] = uid2 >> 24;
+    uid[1] = uid2 >> 16;
+    uid[2] = uid2 >> 8;
+    uid[3] = uid2;
+
+    uid[4] = uid1 >> 24;
+    uid[5] = uid1 >> 16;
+    uid[6] = uid1 >> 8;
+    uid[7] = uid1;
+
+    uid[8]  = uid0 >> 24;
+    uid[9]  = uid0 >> 16;
+    uid[10] = uid0 >> 8;
+    uid[11] = uid0;
 }

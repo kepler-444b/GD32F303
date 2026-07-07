@@ -15,6 +15,7 @@
  *******************************************************************************/
 #include "MQTTClient.h"
 #include "../Source/app/app_evenbus/app_eventbus.h"
+#include "../Source/bsp/bsp_usart/bsp_usart.h"
 
 static void NewMessageData(MessageData *md, MQTTString *aTopicName, MQTTMessage *aMessage)
 {
@@ -186,38 +187,40 @@ int keepalive(MQTTClient *c)
         return SUCCESSS;
     }
 
-    if (c->ping_outstanding && TimerIsExpired(&c->ping_timer)) { // 已经发送了心跳,等待时间已经超时,心跳判定为掉线
+    // 已发送心跳包,等待服务器响应
+    // 如果等待时间超时,说明MQTT连接异常
+    if (c->ping_outstanding && TimerIsExpired(&c->ping_timer)) {
         if (!c->heartbeat_timeout_flag) {
-            printf("keepalive FAIL\n");
+            APP_ERROR("keepalive FAIL");
             c->heartbeat_timeout_flag = 1;
             c->isconnected            = 0;
             app_eventbus_publish(EVENT_NETWOR_OFF, NULL);
             return FAILURE;
         }
     }
+    // 未发送心跳包,且KeepAlive时间到达
+    // 主动发送PINGREQ保持MQTT连接
+    else if (TimerIsExpired(&c->ping_timer)) {
+        Timer timer;
+        TimerInit(&timer);
+        TimerCountdownMS(&timer, 1000);
+        int len = MQTTSerialize_pingreq(c->buf, c->buf_size);
+        if (len > 0 && (rc = sendPacket(c, len, &timer)) == SUCCESSS) {
+            c->ping_outstanding = 1;
+            APP_PRINTF("ping_outstanding:%d\n", c->ping_outstanding);
+            TimerCountdown(&c->ping_timer, c->keepAliveInterval);
 
-    else { // 如果没有超时,则判断是否该发送心跳
-        if (TimerIsExpired(&c->ping_timer)) {
-            Timer timer;
-            TimerInit(&timer);
-            TimerCountdownMS(&timer, 1000);
-            int len = MQTTSerialize_pingreq(c->buf, c->buf_size);
-            printf("ping_outstanding:%d\n", c->ping_outstanding);
-            if (len > 0 && (rc = sendPacket(c, len, &timer)) == SUCCESSS) {
-                c->ping_outstanding = 1;
-                TimerCountdown(&c->ping_timer, c->keepAliveInterval);
-            } else { // 发送心跳包失败,也判定为设备掉线
-                if (c->isconnected) {
-                    printf("send ping failed → network down\n");
-                    c->isconnected            = 0;
-                    c->heartbeat_timeout_flag = 1;
-                    app_eventbus_publish(EVENT_NETWOR_OFF, NULL);
-                }
-                return FAILURE;
+        } else { // 发送心跳包失败,也判定为设备掉线
+            APP_ERROR("send keepalive packet FAIL");
+            if (c->isconnected) {
+                APP_ERROR("send ping failed → network down\n");
+                c->isconnected            = 0;
+                c->heartbeat_timeout_flag = 1;
+                app_eventbus_publish(EVENT_NETWOR_OFF, NULL);
             }
+            return FAILURE;
         }
     }
-
     return rc;
 }
 
@@ -273,8 +276,8 @@ int cycle(MQTTClient *c, Timer *timer)
         case PUBCOMP:
             break;
         case PINGRESP:
-            printf("ping_outstanding:%d\n", c->ping_outstanding);
             c->ping_outstanding = 0;
+            printf("ping_outstanding:%d\n", c->ping_outstanding);
             break;
     }
     keepalive(c);

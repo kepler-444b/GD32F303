@@ -94,7 +94,7 @@ static bool app_timer_task_info_update(const uint8_t *cfg, uint16_t len)
         my_timer_task[id].hour     = hour;
         my_timer_task[id].min      = min;
         my_timer_task[id].reserve  = reserve;
-        APP_PRINTF("id:%d scene_id:%d hour:%d min:%d reserve:%d\n", id, scene_id, hour, min, reserve);
+        APP_PRINTF("id:%d scene_id:%d enable:%d hour:%d min:%d reserve:%d\n", id, scene_id, enable, hour, min, reserve);
     }
     return true;
 }
@@ -161,48 +161,42 @@ static bool app_scene_info_update(const uint8_t *cfg, uint16_t len)
 // 更新到绑定列表
 static bool app_bind_scene_info_update(const uint8_t *cfg, uint16_t len)
 {
-    if (!cfg || len != BIND_GROUP_INFO_SIZE) { // 绑定信息固定12个字节
-        APP_PRINTF("bind group info len err:%d\n", len);
+    if (!cfg || len != BIND_SCENE_INFO_SIZE) { // 绑定信息固定12个字节
+        APP_PRINTF("bind scene info len err:%d\n", len);
         return false;
     }
 
     uint8_t addr     = cfg[0];
-    uint8_t ctrls[8] = {0};
-    uint8_t close_id = cfg[10];
-    uint8_t open_id  = cfg[11];
-    memcpy(ctrls, &cfg[1], sizeof(ctrls));
+    uint8_t key_num  = cfg[1];
+    uint8_t status   = cfg[2];
+    uint8_t scene_id = cfg[3];
+    uint8_t insert   = active_scene_bind;
 
-    uint8_t insert = active_group_bind;
+    // 查找是否存在相同的按键事件
+    for (uint8_t i = 0; i < active_scene_bind; i++) {
 
-    // 查找是否存在相同的按键事件 (依靠 addr 和 ctrls 唯一确定)
-    for (uint8_t i = 0; i < active_group_bind; i++) {
-        // 修复原有的指针Bug：my_bind_group->addr 改为 my_bind_group[i].addr
-        if ((my_bind_group[i].addr == addr) &&
-            (memcmp(ctrls, my_bind_group[i].ctrls, sizeof(ctrls)) == 0)) {
-            insert = i; // 找到了相同的事件,记录下标并准备更新/覆盖
+        if ((my_bind_scene[i].addr == addr) &&
+            (my_bind_scene[i].key_num == key_num) &&
+            (my_bind_scene[i].status == status)) {
+            insert = i; // 找到了相同的按键和状态,记录下标并准备更新/覆盖
             break;
         }
     }
     // 如果是全新绑定,检查容量是否已满
-    if (insert == active_group_bind) {
-        if (active_group_bind >= BIND_GROUP_MAX) {
-            APP_ERROR("bind group full");
+    if (insert == active_scene_bind) {
+        if (active_scene_bind >= SCENE_ID_MAX) {
+            APP_ERROR("bind scene full");
             return false;
         } else {
-            active_group_bind++; // 安全过关,计数+1
+            active_scene_bind++; // 安全过关,计数+1
         }
     }
 
     // 不管是新纪录还是老覆盖，直接无条件写入
-    my_bind_group[insert].addr     = addr;
-    my_bind_group[insert].close_id = close_id;
-    my_bind_group[insert].open_id  = open_id;
-    memcpy(my_bind_group[insert].ctrls, ctrls, sizeof(ctrls));
-
-    APP_PRINTF("addr:%02X open_id:%02X close_id:%02X\n",
-               my_bind_group[insert].addr, my_bind_group[insert].open_id, my_bind_group[insert].close_id);
-    APP_PRINTF_BUF("ctrls", my_bind_group[insert].ctrls, sizeof(my_bind_group[insert].ctrls));
-
+    my_bind_scene[insert].addr     = addr;
+    my_bind_scene[insert].key_num  = key_num;
+    my_bind_scene[insert].scene_id = scene_id;
+    my_bind_scene[insert].status   = status;
     return true;
 }
 
@@ -406,6 +400,7 @@ void app_set_scene_cfg(const uint8_t *cfg, uint16_t len)
 void app_set_timer_task_cfg(const uint8_t *cfg, uint16_t len)
 {
     if (app_timer_task_info_update(cfg, len)) {
+        bsp_set_buuzzer(1);
         app_save_timer_task_cfg();
     }
 }

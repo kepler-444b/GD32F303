@@ -282,6 +282,7 @@ static void app_network_http_task(void *arg)
         } break;
         case HTTP_OTA_CHECK: { // 检查软件版本
             app_ota_check(&http_params, &my_device_info, ethernet_buf, g_report);
+            http_task_flag = HTTP_DNS_INIT;
             app_timer_stop("http_task");
 
         } break;
@@ -298,7 +299,7 @@ static bool mqtt_client_init(void)
     if (ConnectNetwork_nb(&mqtt_net, mqtt_params.server_ip, mqtt_params.port) != SOCK_OK) {
         return false; // 连接失败
     }
-
+    memset(&mqtt_client, 0, sizeof(mqtt_client));
     MQTTClientInit(&mqtt_client, &mqtt_net, 1000, mqtt_send_ethernet_buf, MQTT_ETHERNET_BUF_SIZE, mqtt_recv_ethernet_buf, MQTT_ETHERNET_BUF_SIZE);
     data.willFlag                     = 0;                                         /* will flag: If the will annotation bit is 0, the following will-related settings are invalid*/
     willdata.qos                      = mqtt_params.willQoS;                       /* will QoS */

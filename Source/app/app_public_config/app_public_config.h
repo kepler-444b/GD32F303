@@ -47,7 +47,7 @@ typedef struct {
     uint8_t addr;     // 设备地址
     uint8_t key_num;  // 按键号
     uint8_t scene_id; // 场景id
-    uint8_t status;   // 安装见状态
+    uint8_t status;   // 按键状态
 } bind_scene_t;
 
 // 绑定群组结构体
