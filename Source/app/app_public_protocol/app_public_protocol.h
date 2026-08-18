@@ -13,6 +13,10 @@
 #define PANEL_FRAME_RX_DATA_LEN 6    // 面板类上报有效数据长度固定为6
 #define PANEL_FRAME_RX_MAX_LEN  24
 
+// 温控面板(旋钮)上报数据帧相关宏定义
+#define PANEL_TEMP_FRAME_HEAD    0xF1 // 固定帧头
+#define PANEL_TEMP_FRAME_MAX_LEN 8    // 温控面板(旋钮)上报数据长度
+
 // 主机下发到面板的数据帧相关宏定义
 #define PANEL_FRAME_TX_HEAD_1 0xFF // 固定帧头
 #define PANEL_FRAME_TX_HEAD_2 0xAA // 固定帧头

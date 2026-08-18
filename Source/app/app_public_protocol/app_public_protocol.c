@@ -12,6 +12,7 @@
 #include <stdlib.h>
 
 // 函数声明
+static void app_temp_panel_protocol_check(usart2_rx_buf_t *buf);
 static void app_panel_protocol_check(usart2_rx_buf_t *buf);
 static void app_build_panel_frame_by_sid(uint8_t id);
 static void app_build_extend_frame_by_sid(uint8_t id);
@@ -64,7 +65,18 @@ static void app_public_event_handler(event_type_e event, void *params)
     switch (event) {
         case EVENT_USART2_RECV_MSG: {
             usart2_rx_buf_t *frame = (usart2_rx_buf_t *)params;
-            app_panel_protocol_check(frame);
+
+            if (frame->length > USART2_RECV_SIZE) {
+                APP_ERROR("usart2 rx frame too long");
+                return;
+            }
+            if (frame->buffer[0] == PANEL_FRAME_RX_HEAD) { // 处理灯控面板的数据
+                app_panel_protocol_check(frame);
+            }
+            if (frame->buffer[0] == PANEL_TEMP_FRAME_HEAD) { // 处理温控面板的数据
+                app_temp_panel_protocol_check(frame);
+            }
+
         } break;
         case EVENT_USART0_GET_TIMER: {
             const timer_task_t *temp = app_public_get_timer_task();
@@ -100,19 +112,21 @@ static void app_public_event_handler(event_type_e event, void *params)
     }
 }
 
+// 处理温控面板(旋钮)发来的信息
+static void app_temp_panel_protocol_check(usart2_rx_buf_t *buf)
+{
+    if (buf->length != PANEL_TEMP_FRAME_MAX_LEN) {
+        APP_ERROR("temp panel buf len");
+        return;
+    }
+    APP_PRINTF_BUF("temp panel rx buf", buf->buffer, buf->length);
+}
+
 // 处理面板发来的信息
 static void app_panel_protocol_check(usart2_rx_buf_t *buf)
 {
-    APP_PRINTF_BUF("buf", buf->buffer, buf->length);
+    APP_PRINTF_BUF("panel rx buf", buf->buffer, buf->length);
 
-    if (buf->buffer[0] != PANEL_FRAME_RX_HEAD) {
-        APP_ERROR("panel frame");
-        return;
-    }
-    if (buf->length > USART2_RECV_SIZE) {
-        APP_ERROR("panel frame too long");
-        return;
-    }
     if (app_panel_frame_crc(&buf->buffer[3], buf->buffer[2]) != buf->buffer[9]) {
         APP_ERROR("panel frame crc");
         return;
@@ -171,7 +185,7 @@ static void app_build_panel_frame_by_sid(uint8_t id)
         // 遍历每个面板
         for (uint8_t j = 0; j < PANEL_DEV_MAX; j++) {
             // 遍历 0~5 位
-            uint8_t sub_idx  = j / 8; // 在哪个 sub_frame 中
+            uint8_t sub_idx = j / 8; // 在哪个 sub_frame 中
             // uint8_t addr_idx = j % 8; // 在该 sub_frame 中的第几个地址
 
             for (uint8_t bit = 0; bit <= 5; bit++) {
@@ -180,7 +194,7 @@ static void app_build_panel_frame_by_sid(uint8_t id)
 
                     my_panel_full_status.sub_frame[sub_idx].idx[j].status &= ~(1U << bit);
                     my_panel_full_status.sub_frame[sub_idx].idx[j].status |= (scenes[i].key_status[j] & (1U << bit));
-                    APP_PRINTF_BUF("panel_status", &my_panel_full_status, sizeof(my_panel_full_status));
+                    // APP_PRINTF_BUF("panel_status", &my_panel_full_status, sizeof(my_panel_full_status));
                 }
             }
             if (BIT7(scenes[i].key_reserve[j])) { // 是否控制该旋钮
