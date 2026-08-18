@@ -179,7 +179,7 @@ virtualFolder:
 dependenceList: []
 outDir: build
 miscInfo:
-  uid: 88d5b6e220c6d9e2681d2829c6d1b6c0
+  uid: 89dd318b56c372e78c4babc5b477b36e
 targets:
   GD32F30X:
     cppPreprocessAttrs:
@@ -211,10 +211,13 @@ targets:
           afterBuildTasks: []
           asm-compiler:
             $use: asm-auto
+            defines: []
+            misc-controls: ""
           beforeBuildTasks: []
           c/cpp-compiler:
             language-c: c99
             language-cpp: c++11
+            link-time-optimization: false
             one-elf-section-per-function: true
             optimization: level-2
             short-enums#wchar: true
@@ -224,11 +227,12 @@ targets:
             use-microLIB: true
           linker:
             $outputTaskExcludes:
-              - .s19
+              - .bin
             misc-controls: --diag_suppress=L6329
             output-format: elf
             ro-base: "0x08004000"
             rw-base: "0x20000000"
+            xo-base: ""
         scatterFilePath: output/Project.sct
         storageLayout:
           RAM:
@@ -294,7 +298,7 @@ targets:
               isStartup: true
               mem:
                 size: "0x32000"
-                startAddr: "0x08004000"
+                startAddr: "0x8004000"
               tag: IROM
             - id: 2
               isChecked: false
@@ -309,8 +313,8 @@ targets:
         baseAddr: ""
         bin: ""
         cpuInfo:
-          cpuName: GD32F303VET6
-          vendor: GigaDevice
+          cpuName: "null"
+          vendor: "null"
         otherCmds: ""
         proType: 1
         speed: 8000
